@@ -80,11 +80,7 @@ class TimerNode:
         :param is_parallel: Whether or not the code block was executed in parallel.
         :return:
         """
-        if root_name:
-            node = self.get_child(root_name)
-        else:
-            node = self
-
+        node = self.get_child(root_name) if root_name else self
         node.total += other.total
         node.count += other.count
         node.is_parallel |= is_parallel
@@ -223,8 +219,7 @@ class TimerStack:
     def set_gauge(self, name: str, value: float) -> None:
         if math.isnan(value):
             return
-        gauge_node = self.gauges.get(name)
-        if gauge_node:
+        if gauge_node := self.gauges.get(name):
             gauge_node.update(value)
         else:
             self.gauges[name] = GaugeNode(value)
@@ -233,10 +228,10 @@ class TimerStack:
         self.metadata[key] = value
 
     def _get_gauges(self) -> Dict[str, Dict[str, float]]:
-        gauges = {}
-        for gauge_name, gauge_node in self.gauges.items():
-            gauges[gauge_name] = gauge_node.as_dict()
-        return gauges
+        return {
+            gauge_name: gauge_node.as_dict()
+            for gauge_name, gauge_node in self.gauges.items()
+        }
 
     def _add_default_metadata(self):
         self.metadata["timer_format_version"] = TIMER_FORMAT_VERSION
@@ -258,10 +253,7 @@ def _get_thread_timer() -> TimerStack:
 
 
 def get_timer_stack_for_thread(t: threading.Thread) -> Optional[TimerStack]:
-    if t.ident is None:
-        # Thread hasn't started, shouldn't ever happen
-        return None
-    return _thread_timer_stacks.get(t.ident)
+    return None if t.ident is None else _thread_timer_stacks.get(t.ident)
 
 
 @contextmanager

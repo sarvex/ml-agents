@@ -117,29 +117,25 @@ def demo_to_buffer(
         # check action dimensions in demonstration match
         if behavior_spec.action_spec != expected_behavior_spec.action_spec:
             raise RuntimeError(
-                "The actions {} in demonstration do not match the policy's {}.".format(
-                    behavior_spec.action_spec, expected_behavior_spec.action_spec
-                )
+                f"The actions {behavior_spec.action_spec} in demonstration do not match the policy's {expected_behavior_spec.action_spec}."
             )
-        # check observations match
         if len(behavior_spec.observation_specs) != len(
             expected_behavior_spec.observation_specs
         ):
             raise RuntimeError(
                 "The demonstrations do not have the same number of observations as the policy."
             )
-        else:
-            for i, (demo_obs, policy_obs) in enumerate(
-                zip(
-                    behavior_spec.observation_specs,
-                    expected_behavior_spec.observation_specs,
-                )
-            ):
-                if demo_obs.shape != policy_obs.shape:
-                    raise RuntimeError(
-                        f"The shape {demo_obs} for observation {i} in demonstration \
+        for i, (demo_obs, policy_obs) in enumerate(
+            zip(
+                behavior_spec.observation_specs,
+                expected_behavior_spec.observation_specs,
+            )
+        ):
+            if demo_obs.shape != policy_obs.shape:
+                raise RuntimeError(
+                    f"The shape {demo_obs} for observation {i} in demonstration \
                         do not match the policy's {policy_obs}."
-                    )
+                )
     return behavior_spec, demo_buffer
 
 
@@ -156,14 +152,14 @@ def get_demo_files(path: str) -> List[str]:
             raise ValueError("The path provided is not a '.demo' file.")
         return [path]
     elif os.path.isdir(path):
-        paths = [
+        if paths := [
             os.path.join(path, name)
             for name in os.listdir(path)
             if name.endswith(".demo")
-        ]
-        if not paths:
+        ]:
+            return paths
+        else:
             raise ValueError("There are no '.demo' files in the provided directory.")
-        return paths
     else:
         raise FileNotFoundError(
             f"The demonstration file or directory {path} does not exist."
@@ -205,7 +201,7 @@ def load_demonstration(
                         )
                     total_expected += meta_data_proto.number_steps
                     pos = INITIAL_POS
-                if obs_decoded == 1:
+                elif obs_decoded == 1:
                     brain_param_proto = BrainParametersProto()
                     brain_param_proto.ParseFromString(data[pos : pos + next_pos])
                     pos += next_pos

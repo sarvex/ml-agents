@@ -39,9 +39,7 @@ def create_reward_provider(
     :param settings: The RewardSignalSettings for that reward signal
     :return: The reward signal class instantiated
     """
-    rcls = NAME_TO_CLASS.get(name)
-    if not rcls:
+    if rcls := NAME_TO_CLASS.get(name):
+        return rcls(specs, settings)
+    else:
         raise UnityTrainerException(f"Unknown reward signal type {name}")
-
-    class_inst = rcls(specs, settings)
-    return class_inst

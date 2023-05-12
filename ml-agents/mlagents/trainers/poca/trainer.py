@@ -224,14 +224,13 @@ class POCATrainer(OnPolicyTrainer):
             "tanh_squash": False,
         }
 
-        policy = TorchPolicy(
+        return TorchPolicy(
             self.seed,
             behavior_spec,
             self.trainer_settings.network_settings,
             actor_cls,
             actor_kwargs,
         )
-        return policy
 
     def create_optimizer(self) -> TorchPOCAOptimizer:
         return TorchPOCAOptimizer(self.policy, self.trainer_settings)

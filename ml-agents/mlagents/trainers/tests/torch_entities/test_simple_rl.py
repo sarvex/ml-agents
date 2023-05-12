@@ -361,7 +361,8 @@ def test_recurrent_sac(action_sizes):
 @pytest.mark.parametrize("action_sizes", [(0, 1), (1, 0)])
 def test_simple_ghost(action_sizes):
     env = SimpleEnvironment(
-        [BRAIN_NAME + "?team=0", BRAIN_NAME + "?team=1"], action_sizes=action_sizes
+        [f"{BRAIN_NAME}?team=0", f"{BRAIN_NAME}?team=1"],
+        action_sizes=action_sizes,
     )
     self_play_settings = SelfPlaySettings(
         play_against_latest_model_ratio=1.0, save_steps=2000, swap_steps=2000
@@ -373,7 +374,8 @@ def test_simple_ghost(action_sizes):
 @pytest.mark.parametrize("action_sizes", [(0, 1), (1, 0)])
 def test_simple_ghost_fails(action_sizes):
     env = SimpleEnvironment(
-        [BRAIN_NAME + "?team=0", BRAIN_NAME + "?team=1"], action_sizes=action_sizes
+        [f"{BRAIN_NAME}?team=0", f"{BRAIN_NAME}?team=1"],
+        action_sizes=action_sizes,
     )
     # This config should fail because the ghosted policy is never swapped with a competent policy.
     # Swap occurs after max step is reached.
@@ -394,9 +396,10 @@ def test_simple_ghost_fails(action_sizes):
 @pytest.mark.parametrize("action_sizes", [(0, 1), (1, 0)])
 def test_simple_asymm_ghost(action_sizes):
     # Make opponent for asymmetric case
-    brain_name_opp = BRAIN_NAME + "Opp"
+    brain_name_opp = f"{BRAIN_NAME}Opp"
     env = SimpleEnvironment(
-        [BRAIN_NAME + "?team=0", brain_name_opp + "?team=1"], action_sizes=action_sizes
+        [f"{BRAIN_NAME}?team=0", f"{brain_name_opp}?team=1"],
+        action_sizes=action_sizes,
     )
     self_play_settings = SelfPlaySettings(
         play_against_latest_model_ratio=1.0,
@@ -411,9 +414,10 @@ def test_simple_asymm_ghost(action_sizes):
 @pytest.mark.parametrize("action_sizes", [(0, 1), (1, 0)])
 def test_simple_asymm_ghost_fails(action_sizes):
     # Make opponent for asymmetric case
-    brain_name_opp = BRAIN_NAME + "Opp"
+    brain_name_opp = f"{BRAIN_NAME}Opp"
     env = SimpleEnvironment(
-        [BRAIN_NAME + "?team=0", brain_name_opp + "?team=1"], action_sizes=action_sizes
+        [f"{BRAIN_NAME}?team=0", f"{brain_name_opp}?team=1"],
+        action_sizes=action_sizes,
     )
     # This config should fail because the team that us not learning when both have reached
     # max step should be executing the initial, untrained poliy.
@@ -461,7 +465,7 @@ def simple_record(tmpdir_factory):
             brain_name=BRAIN_NAME, is_training=True, action_spec=action_spec_proto
         )
         action_type = "Discrete" if action_sizes else "Continuous"
-        demo_path_name = "1DTest" + action_type + ".demo"
+        demo_path_name = f"1DTest{action_type}.demo"
         demo_path = str(tmpdir_factory.mktemp("tmp_demo").join(demo_path_name))
         write_demo(demo_path, meta_data_proto, brain_param_proto, agent_info_protos)
         return demo_path

@@ -226,4 +226,4 @@ def test_checkpoint_conversion(tmpdir, rnn, visual, discrete):
     model_saver = TorchModelSaver(trainer_params, model_path)
     model_saver.register(policy)
     model_saver.save_checkpoint("Mock_Brain", 100)
-    assert os.path.isfile(model_path + "/Mock_Brain-100.onnx")
+    assert os.path.isfile(f"{model_path}/Mock_Brain-100.onnx")

@@ -31,8 +31,7 @@ def convert_behaviors(old_trainer_config: Dict[str, Any]) -> Dict[str, Any]:
                     "Config doesn't specify a trainer type. "
                     "Please specify trainer: in your config."
                 )
-            new_config = {}
-            new_config["trainer_type"] = trainer_type
+            new_config = {"trainer_type": trainer_type}
             hyperparam_cls = all_trainer_settings[trainer_type]
             # Try to absorb as much as possible into the hyperparam_cls
             new_config["hyperparameters"] = cattr.structure(config, hyperparam_cls)
@@ -92,8 +91,9 @@ def convert_samplers(old_sampler_config: Dict[str, Any]) -> Dict[str, Any]:
                 "resampling-interval is no longer necessary for parameter randomization and is being ignored."
             )
             continue
-        new_sampler_config[parameter] = {}
-        new_sampler_config[parameter]["sampler_type"] = parameter_config["sampler-type"]
+        new_sampler_config[parameter] = {
+            "sampler_type": parameter_config["sampler-type"]
+        }
         new_samp_parameters = dict(parameter_config)  # Copy dict
         new_samp_parameters.pop("sampler-type")
         new_sampler_config[parameter]["sampler_parameters"] = new_samp_parameters
@@ -180,8 +180,7 @@ def parse_args():
     argparser.add_argument(
         "output_config_path", help="Path to write converted YAML file."
     )
-    args = argparser.parse_args()
-    return args
+    return argparser.parse_args()
 
 
 def convert(
@@ -212,13 +211,11 @@ def convert(
         param_randomization = config.get("parameter_randomization", {})
         if "resampling-interval" in param_randomization:
             param_randomization.pop("resampling-interval")
-        if len(param_randomization) > 0:
-            # check if we use the old format sampler-type vs sampler_type
-            if (
-                "sampler-type"
-                in param_randomization[list(param_randomization.keys())[0]]
-            ):
-                param_randomization = convert_samplers(param_randomization)
+        if len(param_randomization) > 0 and (
+            "sampler-type"
+            in param_randomization[list(param_randomization.keys())[0]]
+        ):
+            param_randomization = convert_samplers(param_randomization)
 
         full_config["environment_parameters"] = convert_samplers_and_curriculum(
             param_randomization, config.get("curriculum", {})

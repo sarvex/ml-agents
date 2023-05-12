@@ -23,9 +23,7 @@ def mock_glob_method(path):
         return ["darwin"]
     if ".exe" in path:
         return ["win32"]
-    if "*" in path:
-        return "Any"
-    return []
+    return "Any" if "*" in path else []
 
 
 @mock.patch("sys.platform")

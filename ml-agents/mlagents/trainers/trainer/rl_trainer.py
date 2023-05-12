@@ -79,19 +79,17 @@ class RLTrainer(Trainer):
                     rewards.get(agent_id, 0)
                 )
                 self.reward_buffer.appendleft(rewards.get(agent_id, 0))
-                rewards[agent_id] = 0
+            elif isinstance(optimizer.reward_signals[name], BaseRewardProvider):
+                self.stats_reporter.add_stat(
+                    f"Policy/{optimizer.reward_signals[name].name.capitalize()} Reward",
+                    rewards.get(agent_id, 0),
+                )
             else:
-                if isinstance(optimizer.reward_signals[name], BaseRewardProvider):
-                    self.stats_reporter.add_stat(
-                        f"Policy/{optimizer.reward_signals[name].name.capitalize()} Reward",
-                        rewards.get(agent_id, 0),
-                    )
-                else:
-                    self.stats_reporter.add_stat(
-                        optimizer.reward_signals[name].stat_name,
-                        rewards.get(agent_id, 0),
-                    )
-                rewards[agent_id] = 0
+                self.stats_reporter.add_stat(
+                    optimizer.reward_signals[name].stat_name,
+                    rewards.get(agent_id, 0),
+                )
+            rewards[agent_id] = 0
 
     def _clear_update_buffer(self) -> None:
         """
@@ -118,18 +116,12 @@ class RLTrainer(Trainer):
     def create_model_saver(
         trainer_settings: TrainerSettings, model_path: str, load: bool
     ) -> BaseModelSaver:
-        model_saver = TorchModelSaver(  # type: ignore
-            trainer_settings, model_path, load
-        )
-        return model_saver
+        return TorchModelSaver(trainer_settings, model_path, load)  # type: ignore
 
     def _policy_mean_reward(self) -> Optional[float]:
         """Returns the mean episode reward for the current policy."""
         rewards = self.cumulative_returns_since_policy_update
-        if len(rewards) == 0:
-            return None
-        else:
-            return sum(rewards) / len(rewards)
+        return None if len(rewards) == 0 else sum(rewards) / len(rewards)
 
     @timed
     def _checkpoint(self) -> ModelCheckpoint:
@@ -195,8 +187,7 @@ class RLTrainer(Trainer):
         self._next_save_step = self._get_next_interval_step(
             self.trainer_settings.checkpoint_interval
         )
-        p = self.get_policy(name_behavior_id)
-        if p:
+        if p := self.get_policy(name_behavior_id):
             p.increment_step(n_steps)
         self.stats_reporter.set_stat("Step", float(self.get_step))
 
@@ -212,7 +203,7 @@ class RLTrainer(Trainer):
         Saves training statistics to Tensorboard.
         """
         self.stats_reporter.add_stat("Is Training", float(self.should_still_train))
-        self.stats_reporter.write_stats(int(step))
+        self.stats_reporter.write_stats(step)
 
     @abc.abstractmethod
     def _process_trajectory(self, trajectory: Trajectory) -> None:
@@ -267,13 +258,14 @@ class RLTrainer(Trainer):
         """
         Warn if the trainer receives a Group Reward but isn't a multiagent trainer (e.g. POCA).
         """
-        if not self._has_warned_group_rewards:
-            if np.any(buffer[BufferKey.GROUP_REWARD]):
-                logger.warning(
-                    "An agent recieved a Group Reward, but you are not using a multi-agent trainer. "
-                    "Please use the POCA trainer for best results."
-                )
-                self._has_warned_group_rewards = True
+        if not self._has_warned_group_rewards and np.any(
+            buffer[BufferKey.GROUP_REWARD]
+        ):
+            logger.warning(
+                "An agent recieved a Group Reward, but you are not using a multi-agent trainer. "
+                "Please use the POCA trainer for best results."
+            )
+            self._has_warned_group_rewards = True
 
     def advance(self) -> None:
         """
@@ -296,10 +288,9 @@ class RLTrainer(Trainer):
                 if self.threaded and not _queried:
                     # Yield thread to avoid busy-waiting
                     time.sleep(0.0001)
-        if self.should_still_train:
-            if self._is_ready_update():
-                with hierarchical_timer("_update_policy"):
-                    if self._update_policy():
-                        for q in self.policy_queues:
-                            # Get policies that correspond to the policy queue in question
-                            q.put(self.get_policy(q.behavior_id))
+        if self.should_still_train and self._is_ready_update():
+            with hierarchical_timer("_update_policy"):
+                if self._update_policy():
+                    for q in self.policy_queues:
+                        # Get policies that correspond to the policy queue in question
+                        q.put(self.get_policy(q.behavior_id))

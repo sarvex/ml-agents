@@ -194,9 +194,7 @@ class EntityEmbedding(torch.nn.Module):
             expanded_self = torch.cat([expanded_self] * num_entities, dim=1)
             # Concatenate all observations with self
             entities = torch.cat([expanded_self, entities], dim=2)
-        # Encode entities
-        encoded_entities = self.self_ent_encoder(entities)
-        return encoded_entities
+        return self.self_ent_encoder(entities)
 
 
 class ResidualSelfAttention(torch.nn.Module):

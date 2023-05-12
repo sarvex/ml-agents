@@ -100,8 +100,7 @@ class BCModule:
         self.current_lr = decay_lr
 
         self.has_updated = True
-        update_stats = {"Losses/Pretraining Loss": np.mean(batch_losses)}
-        return update_stats
+        return {"Losses/Pretraining Loss": np.mean(batch_losses)}
 
     def _behavioral_cloning_loss(
         self,

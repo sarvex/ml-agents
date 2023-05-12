@@ -47,13 +47,12 @@ def generate_list_agent_proto(
         ap.id = agent_index
         ap.action_mask.extend([True, False] * 5)
         obs_proto_list = []
-        for obs_index in range(len(shape)):
+        for item in shape:
             obs_proto = ObservationProto()
-            obs_proto.shape.extend(list(shape[obs_index]))
+            obs_proto.shape.extend(list(item))
             obs_proto.compression_type = NONE
             obs_proto.float_data.data.extend(
-                ([float("nan")] if nan_observations else [0.1])
-                * np.prod(shape[obs_index])
+                ([float("nan")] if nan_observations else [0.1]) * np.prod(item)
             )
             obs_proto_list.append(obs_proto)
         ap.observations.extend(obs_proto_list)
@@ -162,16 +161,16 @@ def proto_from_steps(
             reward=reward,
             done=done,
             id=agent_id,
-            max_step_reached=bool(max_step_reached),
+            max_step_reached=max_step_reached,
             action_mask=agent_mask,
             observations=observations,
         )
         agent_info_protos.append(agent_info_proto)
+    done = True
     # Take care of the TerminalSteps second
     for agent_id in terminal_steps.agent_id:
         agent_id_index = terminal_steps.agent_id_to_index[agent_id]
         reward = terminal_steps.reward[agent_id_index]
-        done = True
         max_step_reached = terminal_steps.interrupted[agent_id_index]
 
         final_observations: List[ObservationProto] = []
@@ -223,13 +222,14 @@ def proto_from_steps_and_action(
             proto.discrete_actions.extend(discrete_actions[i])
             proto.vector_actions_deprecated.extend(discrete_actions[i])
         agent_action_protos.append(proto)
-    agent_info_action_pair_protos = [
-        AgentInfoActionPairProto(agent_info=agent_info_proto, action_info=action_proto)
+    return [
+        AgentInfoActionPairProto(
+            agent_info=agent_info_proto, action_info=action_proto
+        )
         for agent_info_proto, action_proto in zip(
             agent_info_protos, agent_action_protos
         )
     ]
-    return agent_info_action_pair_protos
 
 
 def test_process_pixels():

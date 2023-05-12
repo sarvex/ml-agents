@@ -47,10 +47,10 @@ def linear_layer(
     :param bias_init: The Initialization to use for the weights of the bias layer
     """
     layer = torch.nn.Linear(input_size, output_size)
-    if (
-        kernel_init == Initialization.KaimingHeNormal
-        or kernel_init == Initialization.KaimingHeUniform
-    ):
+    if kernel_init in [
+        Initialization.KaimingHeNormal,
+        Initialization.KaimingHeUniform,
+    ]:
         _init_methods[kernel_init](layer.weight.data, nonlinearity="linear")
     else:
         _init_methods[kernel_init](layer.weight.data)

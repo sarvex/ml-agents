@@ -63,8 +63,7 @@ class GaussianDistInstance(DistInstance):
         self.std = std
 
     def sample(self):
-        sample = self.mean + torch.randn_like(self.mean) * self.std
-        return sample
+        return self.mean + torch.randn_like(self.mean) * self.std
 
     def deterministic_sample(self):
         return self.mean
@@ -100,8 +99,7 @@ class TanhGaussianDistInstance(GaussianDistInstance):
 
     def sample(self):
         unsquashed_sample = super().sample()
-        squashed = self.transform(unsquashed_sample)
-        return squashed
+        return self.transform(unsquashed_sample)
 
     def _inverse_tanh(self, value):
         capped_value = torch.clamp(value, -1 + EPSILON, 1 - EPSILON)

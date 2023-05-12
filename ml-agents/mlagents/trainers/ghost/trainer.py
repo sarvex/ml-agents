@@ -427,9 +427,7 @@ class GhostTrainer(Trainer):
                 policy.load_weights(snapshot[brain_name])
                 name_to_policy_queue[brain_name].put(policy)
                 logger.debug(
-                    "Step {}: Swapping snapshot {} to id {} with team {} learning".format(
-                        self.ghost_step, x, behavior_id, self._learning_team
-                    )
+                    f"Step {self.ghost_step}: Swapping snapshot {x} to id {behavior_id} with team {self._learning_team} learning"
                 )
 
     def publish_policy_queue(self, policy_queue: AgentManagerQueue[Policy]) -> None:

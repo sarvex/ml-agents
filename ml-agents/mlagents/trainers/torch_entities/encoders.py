@@ -14,13 +14,12 @@ class Normalizer(nn.Module):
         self.register_buffer("running_variance", torch.ones(vec_obs_size))
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
-        normalized_state = torch.clamp(
+        return torch.clamp(
             (inputs - self.running_mean)
             / torch.sqrt(self.running_variance / self.normalization_steps),
             -5,
             5,
         )
-        return normalized_state
 
     def update(self, vector_input: torch.Tensor) -> None:
         with torch.no_grad():
@@ -273,12 +272,15 @@ class ResNetVisualEncoder(nn.Module):
         n_blocks = 2  # number of residual blocks
         layers = []
         last_channel = initial_channels
-        for _, channel in enumerate(n_channels):
-            layers.append(nn.Conv2d(last_channel, channel, [3, 3], [1, 1], padding=1))
-            layers.append(nn.MaxPool2d([3, 3], [2, 2]))
+        for channel in n_channels:
+            layers.extend(
+                (
+                    nn.Conv2d(last_channel, channel, [3, 3], [1, 1], padding=1),
+                    nn.MaxPool2d([3, 3], [2, 2]),
+                )
+            )
             height, width = pool_out_shape((height, width), 3)
-            for _ in range(n_blocks):
-                layers.append(ResNetBlock(channel))
+            layers.extend(ResNetBlock(channel) for _ in range(n_blocks))
             last_channel = channel
         layers.append(Swish())
         self.final_flat_size = n_channels[-1] * height * width

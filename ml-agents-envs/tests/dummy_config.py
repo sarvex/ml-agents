@@ -19,8 +19,12 @@ from mlagents.trainers.poca.trainer import (
     TRAINER_NAME as POCA_TRAINER_NAME,
 )
 
-CONTINUOUS_DEMO_PATH = os.path.dirname(os.path.abspath(__file__)) + "/test.demo"
-DISCRETE_DEMO_PATH = os.path.dirname(os.path.abspath(__file__)) + "/testdcvis.demo"
+CONTINUOUS_DEMO_PATH = (
+    f"{os.path.dirname(os.path.abspath(__file__))}/test.demo"
+)
+DISCRETE_DEMO_PATH = (
+    f"{os.path.dirname(os.path.abspath(__file__))}/testdcvis.demo"
+)
 
 _PPO_CONFIG = TrainerSettings(
     trainer_type=PPO_TRAINER_NAME,

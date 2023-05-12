@@ -61,7 +61,7 @@ class ModelCheckpointManager:
         :param keep_checkpoints: Number of checkpoints to record (user-defined).
         """
         while len(checkpoints) > keep_checkpoints:
-            if keep_checkpoints <= 0 or len(checkpoints) == 0:
+            if keep_checkpoints <= 0 or not checkpoints:
                 break
             ModelCheckpointManager.remove_checkpoint(checkpoints.pop(0))
         return checkpoints

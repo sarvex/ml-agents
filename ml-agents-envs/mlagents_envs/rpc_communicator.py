@@ -68,7 +68,7 @@ class RpcCommunicator(Communicator):
             )
             # Using unspecified address, which means that grpc is communicating on all IPs
             # This is so that the docker container can connect.
-            self.server.add_insecure_port("[::]:" + str(self.port))
+            self.server.add_insecure_port(f"[::]:{str(self.port)}")
             self.server.start()
             self.is_open = True
         except Exception:
@@ -79,7 +79,7 @@ class RpcCommunicator(Communicator):
         Attempts to bind to the requested communicator port, checking if it is already in use.
         """
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        if platform == "linux" or platform == "linux2":
+        if platform in ["linux", "linux2"]:
             # On linux, the port remains unusable for TIME_WAIT=60 seconds after closing
             # SO_REUSEADDR frees the port right after closing the environment
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -141,9 +141,7 @@ class RpcCommunicator(Communicator):
         self.unity_to_external.parent_conn.send(message)
         self.poll_for_timeout(poll_callback)
         output = self.unity_to_external.parent_conn.recv()
-        if output.header.status != 200:
-            return None
-        return output.unity_output
+        return None if output.header.status != 200 else output.unity_output
 
     def close(self):
         """

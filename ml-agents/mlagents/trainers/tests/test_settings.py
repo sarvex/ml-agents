@@ -35,9 +35,7 @@ def check_if_different(testobj1: object, testobj2: object) -> None:
     assert testobj1 is not testobj2
     if attr.has(testobj1.__class__) and attr.has(testobj2.__class__):
         for key, val in attr.asdict(testobj1, recurse=False).items():
-            if (
-                isinstance(val, dict) or isinstance(val, list) or attr.has(val)
-            ) and val != {}:
+            if (isinstance(val, (dict, list)) or attr.has(val)) and val != {}:
                 # Note: this check doesn't check the contents of mutables.
                 check_if_different(val, attr.asdict(testobj2, recurse=False)[key])
 
@@ -407,9 +405,10 @@ def test_exportable_settings(use_defaults):
     Test that structuring and unstructuring a RunOptions object results in the same
     configuration representation.
     """
-    # Try to enable as many features as possible in this test YAML to hit all the
-    # edge cases. Set as much as possible as non-default values to ensure no flukes.
-    test_yaml = """
+    if not use_defaults:
+        # Try to enable as many features as possible in this test YAML to hit all the
+        # edge cases. Set as much as possible as non-default values to ensure no flukes.
+        test_yaml = """
     behaviors:
         3DBall:
             trainer_type: sac
@@ -518,7 +517,6 @@ def test_exportable_settings(use_defaults):
             sampler_parameters:
                 intervals: [[1.0, 2.0],[4.0, 5.0]]
     """
-    if not use_defaults:
         loaded_yaml = yaml.safe_load(test_yaml)
         run_options = RunOptions.from_dict(yaml.safe_load(test_yaml))
     else:

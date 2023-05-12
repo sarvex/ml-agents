@@ -116,9 +116,7 @@ def test_all_masking(mask_value):
                 (center.reshape((batch_size, 1, size)) - key) ** 2, dim=2
             )
             argmin = torch.argmin(distance, dim=1)
-            target = []
-            for i in range(batch_size):
-                target += [key[i, argmin[i], :]]
+            target = [key[i, argmin[i], :] for i in range(batch_size)]
             target = torch.stack(target, dim=0)
             target = target.detach()
 
@@ -163,9 +161,7 @@ def test_predict_closest_training():
                 (center.reshape((batch_size, 1, size)) - key) ** 2, dim=2
             )
             argmin = torch.argmin(distance, dim=1)
-            target = []
-            for i in range(batch_size):
-                target += [key[i, argmin[i], :]]
+            target = [key[i, argmin[i], :] for i in range(batch_size)]
             target = torch.stack(target, dim=0)
             target = target.detach()
 

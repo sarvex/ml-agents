@@ -121,8 +121,7 @@ class Policy:
         # See https://stackoverflow.com/questions/6736590/fast-check-for-nan-in-numpy for background.
         if action is not None:
             d = np.sum(action.continuous)
-            has_nan = np.isnan(d)
-            if has_nan:
+            if has_nan := np.isnan(d):
                 raise RuntimeError("Continuous NaN action detected.")
 
     @abstractmethod

@@ -77,18 +77,19 @@ class UnityEnvRegistry(Mapping):
         self._sync = False
 
     def _load_all_manifests(self) -> None:
-        if not self._sync:
-            for path_to_yaml in self._manifests:
-                if path_to_yaml[:4] == "http":
-                    manifest = load_remote_manifest(path_to_yaml)
-                else:
-                    manifest = load_local_manifest(path_to_yaml)
-                for env in manifest["environments"]:
-                    remote_entry_args = list(env.values())[0]
-                    remote_entry_args["identifier"] = list(env.keys())[0]
-                    self.register(RemoteRegistryEntry(**remote_entry_args))
-            self._manifests = []
-            self._sync = True
+        if self._sync:
+            return
+        for path_to_yaml in self._manifests:
+            if path_to_yaml[:4] == "http":
+                manifest = load_remote_manifest(path_to_yaml)
+            else:
+                manifest = load_local_manifest(path_to_yaml)
+            for env in manifest["environments"]:
+                remote_entry_args = list(env.values())[0]
+                remote_entry_args["identifier"] = list(env.keys())[0]
+                self.register(RemoteRegistryEntry(**remote_entry_args))
+        self._manifests = []
+        self._sync = True
 
     def clear(self) -> None:
         """

@@ -32,9 +32,7 @@ class BehaviorIdentifiers(NamedTuple):
         parsed = urlparse(name_behavior_id)
         name = parsed.path
         ids = parse_qs(parsed.query)
-        team_id: int = 0
-        if "team" in ids:
-            team_id = int(ids["team"][0])
+        team_id = int(ids["team"][0]) if "team" in ids else 0
         return BehaviorIdentifiers(
             behavior_id=name_behavior_id, brain_name=name, team_id=team_id
         )
@@ -47,7 +45,7 @@ def create_name_behavior_id(name: str, team_id: int) -> str:
     :param team_id: team ID
     :return: name_behavior_id
     """
-    return name + "?team=" + str(team_id)
+    return f"{name}?team={team_id}"
 
 
 def get_global_agent_id(worker_id: int, agent_id: AgentId) -> GlobalAgentId:

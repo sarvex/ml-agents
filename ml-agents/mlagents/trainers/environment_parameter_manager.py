@@ -69,11 +69,13 @@ class EnvironmentParameterManager:
         result = 1
         for settings in self._dict_settings.values():
             for lesson in settings.curriculum:
-                if lesson.completion_criteria is not None:
-                    if lesson.completion_criteria.behavior == behavior_name:
-                        result = max(
-                            result, lesson.completion_criteria.min_lesson_length
-                        )
+                if (
+                    lesson.completion_criteria is not None
+                    and lesson.completion_criteria.behavior == behavior_name
+                ):
+                    result = max(
+                        result, lesson.completion_criteria.min_lesson_length
+                    )
         return result
 
     def get_current_samplers(self) -> Dict[str, ParameterRandomizationSettings]:
@@ -96,11 +98,12 @@ class EnvironmentParameterManager:
         Creates a dictionary from environment parameter to the current lesson number.
         If not using curriculum, this number is always 0 for that environment parameter.
         """
-        result: Dict[str, int] = {}
-        for parameter_name in self._dict_settings.keys():
-            result[parameter_name] = GlobalTrainingStatus.get_parameter_state(
+        result: Dict[str, int] = {
+            parameter_name: GlobalTrainingStatus.get_parameter_state(
                 parameter_name, StatusType.LESSON_NUM
             )
+            for parameter_name in self._dict_settings.keys()
+        }
         return result
 
     def log_current_lesson(self, parameter_name: Optional[str] = None) -> None:

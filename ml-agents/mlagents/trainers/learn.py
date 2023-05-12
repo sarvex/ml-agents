@@ -223,11 +223,7 @@ def run_cli(options: RunOptions) -> None:
         print("\n\n\tUnity Technologies\n")
     print(get_version_string())
 
-    if options.debug:
-        log_level = logging_util.DEBUG
-    else:
-        log_level = logging_util.INFO
-
+    log_level = logging_util.DEBUG if options.debug else logging_util.INFO
     logging_util.set_log_level(log_level)
 
     logger.debug("Configuration for this run:")

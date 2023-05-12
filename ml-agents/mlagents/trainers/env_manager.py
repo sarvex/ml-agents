@@ -120,23 +120,17 @@ class EnvManager(ABC):
             except AgentManagerQueue.Empty:
                 if _policy is not None:
                     self.set_policy(brain_name, _policy)
-        # Step the environments
-        new_step_infos = self._step()
-        return new_step_infos
+        return self._step()
 
     def process_steps(self, new_step_infos: List[EnvironmentStep]) -> int:
-        # Add to AgentProcessor
-        num_step_infos = self._process_step_infos(new_step_infos)
-        return num_step_infos
+        return self._process_step_infos(new_step_infos)
 
     def _process_step_infos(self, step_infos: List[EnvironmentStep]) -> int:
         for step_info in step_infos:
             for name_behavior_id in step_info.name_behavior_ids:
                 if name_behavior_id not in self.agent_managers:
                     logger.warning(
-                        "Agent manager was not created for behavior id {}.".format(
-                            name_behavior_id
-                        )
+                        f"Agent manager was not created for behavior id {name_behavior_id}."
                     )
                     continue
                 decision_steps, terminal_steps = step_info.current_all_step_result[

@@ -87,7 +87,7 @@ class EngineConfigurationChannel(SideChannel):
                 "You cannot set the width/height of the screen resolution without also setting the height/width"
             )
 
-        if width is not None and height is not None:
+        if width is not None:
             screen_msg = OutgoingMessage()
             screen_msg.write_int32(self.ConfigurationType.SCREEN_RESOLUTION)
             screen_msg.write_int32(width)

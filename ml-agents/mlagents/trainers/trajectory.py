@@ -63,9 +63,9 @@ class ObsUtil:
         """
         Creates the list of observations from an AgentBuffer
         """
-        result: List[np.array] = []
-        for i in range(num_obs):
-            result.append(batch[ObsUtil.get_name_at(i)])
+        result: List[np.array] = [
+            batch[ObsUtil.get_name_at(i)] for i in range(num_obs)
+        ]
         return result
 
     @staticmethod
@@ -73,10 +73,7 @@ class ObsUtil:
         """
         Creates the list of next observations from an AgentBuffer
         """
-        result = []
-        for i in range(num_obs):
-            result.append(batch[ObsUtil.get_name_at_next(i)])
-        return result
+        return [batch[ObsUtil.get_name_at_next(i)] for i in range(num_obs)]
 
 
 class GroupObsUtil:
@@ -105,32 +102,24 @@ class GroupObsUtil:
         """
         Creates the list of observations from an AgentBuffer
         """
-        separated_obs: List[np.array] = []
-        for i in range(num_obs):
-            separated_obs.append(
-                batch[GroupObsUtil.get_name_at(i)].padded_to_batch(pad_value=np.nan)
-            )
-        # separated_obs contains a List(num_obs) of Lists(num_agents), we want to flip
-        # that and get a List(num_agents) of Lists(num_obs)
-        result = GroupObsUtil._transpose_list_of_lists(separated_obs)
-        return result
+        separated_obs: List[np.array] = [
+            batch[GroupObsUtil.get_name_at(i)].padded_to_batch(pad_value=np.nan)
+            for i in range(num_obs)
+        ]
+        return GroupObsUtil._transpose_list_of_lists(separated_obs)
 
     @staticmethod
     def from_buffer_next(batch: AgentBuffer, num_obs: int) -> List[np.array]:
         """
         Creates the list of observations from an AgentBuffer
         """
-        separated_obs: List[np.array] = []
-        for i in range(num_obs):
-            separated_obs.append(
-                batch[GroupObsUtil.get_name_at_next(i)].padded_to_batch(
-                    pad_value=np.nan
-                )
+        separated_obs: List[np.array] = [
+            batch[GroupObsUtil.get_name_at_next(i)].padded_to_batch(
+                pad_value=np.nan
             )
-        # separated_obs contains a List(num_obs) of Lists(num_agents), we want to flip
-        # that and get a List(num_agents) of Lists(num_obs)
-        result = GroupObsUtil._transpose_list_of_lists(separated_obs)
-        return result
+            for i in range(num_obs)
+        ]
+        return GroupObsUtil._transpose_list_of_lists(separated_obs)
 
 
 class Trajectory(NamedTuple):
@@ -154,11 +143,7 @@ class Trajectory(NamedTuple):
         obs = self.steps[0].obs
         for step, exp in enumerate(self.steps):
             is_last_step = step == len(self.steps) - 1
-            if not is_last_step:
-                next_obs = self.steps[step + 1].obs
-            else:
-                next_obs = self.next_obs
-
+            next_obs = self.steps[step + 1].obs if not is_last_step else self.next_obs
             num_obs = len(obs)
             for i in range(num_obs):
                 agent_buffer_trajectory[ObsUtil.get_name_at(i)].append(obs[i])
@@ -208,23 +193,19 @@ class Trajectory(NamedTuple):
             )
 
             for i in range(num_obs):
-                ith_group_obs = []
-                for _group_status in exp.group_status:
-                    # Assume teammates have same obs space
-                    ith_group_obs.append(_group_status.obs[i])
+                ith_group_obs = [_group_status.obs[i] for _group_status in exp.group_status]
                 agent_buffer_trajectory[GroupObsUtil.get_name_at(i)].append(
                     ith_group_obs
                 )
 
                 ith_group_obs_next = []
                 if is_last_step:
-                    for _obs in self.next_group_obs:
-                        ith_group_obs_next.append(_obs[i])
+                    ith_group_obs_next.extend(_obs[i] for _obs in self.next_group_obs)
                 else:
                     next_group_status = self.steps[step + 1].group_status
-                    for _group_status in next_group_status:
-                        # Assume teammates have same obs space
-                        ith_group_obs_next.append(_group_status.obs[i])
+                    ith_group_obs_next.extend(
+                        _group_status.obs[i] for _group_status in next_group_status
+                    )
                 agent_buffer_trajectory[GroupObsUtil.get_name_at_next(i)].append(
                     ith_group_obs_next
                 )

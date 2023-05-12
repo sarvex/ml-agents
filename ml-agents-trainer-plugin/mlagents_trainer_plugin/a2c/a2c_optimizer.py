@@ -105,12 +105,12 @@ class A2COptimizer(TorchOptimizer):
         # Get decayed parameters
         decay_lr = self.decay_learning_rate.get_value(self.policy.get_current_step())
         decay_bet = self.decay_beta.get_value(self.policy.get_current_step())
-        returns = {}
-        for name in self.reward_signals:
-            returns[name] = ModelUtils.list_to_tensor(
+        returns = {
+            name: ModelUtils.list_to_tensor(
                 batch[RewardSignalUtil.returns_key(name)]
             )
-
+            for name in self.reward_signals
+        }
         n_obs = len(self.policy.behavior_spec.observation_specs)
         current_obs = ObsUtil.from_buffer(batch, n_obs)
         # Convert to tensors
@@ -123,7 +123,7 @@ class A2COptimizer(TorchOptimizer):
             ModelUtils.list_to_tensor(batch[BufferKey.MEMORY][i])
             for i in range(0, len(batch[BufferKey.MEMORY]), self.policy.sequence_length)
         ]
-        if len(memories) > 0:
+        if memories:
             memories = torch.stack(memories).unsqueeze(0)
 
         # Get value memories
@@ -133,7 +133,7 @@ class A2COptimizer(TorchOptimizer):
                 0, len(batch[BufferKey.CRITIC_MEMORY]), self.policy.sequence_length
             )
         ]
-        if len(value_memories) > 0:
+        if value_memories:
             value_memories = torch.stack(value_memories).unsqueeze(0)
 
         run_out = self.policy.actor.get_stats(
@@ -171,7 +171,7 @@ class A2COptimizer(TorchOptimizer):
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
-        update_stats = {
+        return {
             # NOTE: abs() is not technically correct, but matches the behavior in TensorFlow.
             # TODO: After PyTorch is default, change to something more correct.
             "Losses/Policy Loss": torch.abs(policy_loss).item(),
@@ -180,13 +180,11 @@ class A2COptimizer(TorchOptimizer):
             "Policy/Beta": decay_bet,
         }
 
-        return update_stats
-
     def get_modules(self):
         modules = {
             "Optimizer:value_optimizer": self.optimizer,
             "Optimizer:critic": self._critic,
         }
         for reward_provider in self.reward_signals.values():
-            modules.update(reward_provider.get_modules())
+            modules |= reward_provider.get_modules()
         return modules

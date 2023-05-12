@@ -38,7 +38,7 @@ def test_run_environment(env_name):
 
         for obs_spec in group_spec.observation_specs:
             # Make sure the name was set in the ObservationSpec
-            assert bool(obs_spec.name) is True, f'obs_spec.name="{obs_spec.name}"'
+            assert bool(obs_spec.name), f'obs_spec.name="{obs_spec.name}"'
 
         # Is there a visual observation ?
         vis_obs = any(

@@ -100,9 +100,9 @@ class DecisionSteps(Mapping):
         this DecisionSteps.
         """
         if self._agent_id_to_index is None:
-            self._agent_id_to_index = {}
-            for a_idx, a_id in enumerate(self.agent_id):
-                self._agent_id_to_index[a_id] = a_idx
+            self._agent_id_to_index = {
+                a_id: a_idx for a_idx, a_id in enumerate(self.agent_id)
+            }
         return self._agent_id_to_index
 
     def __len__(self) -> int:
@@ -117,14 +117,10 @@ class DecisionSteps(Mapping):
         if agent_id not in self.agent_id_to_index:
             raise KeyError(f"agent_id {agent_id} is not present in the DecisionSteps")
         agent_index = self._agent_id_to_index[agent_id]  # type: ignore
-        agent_obs = []
-        for batched_obs in self.obs:
-            agent_obs.append(batched_obs[agent_index])
+        agent_obs = [batched_obs[agent_index] for batched_obs in self.obs]
         agent_mask = None
         if self.action_mask is not None:
-            agent_mask = []
-            for mask in self.action_mask:
-                agent_mask.append(mask[agent_index])
+            agent_mask = [mask[agent_index] for mask in self.action_mask]
         group_id = self.group_id[agent_index]
         return DecisionStep(
             obs=agent_obs,
@@ -144,9 +140,10 @@ class DecisionSteps(Mapping):
         Returns an empty DecisionSteps.
         :param spec: The BehaviorSpec for the DecisionSteps
         """
-        obs: List[np.ndarray] = []
-        for sen_spec in spec.observation_specs:
-            obs += [np.zeros((0,) + sen_spec.shape, dtype=np.float32)]
+        obs: List[np.ndarray] = [
+            np.zeros((0,) + sen_spec.shape, dtype=np.float32)
+            for sen_spec in spec.observation_specs
+        ]
         return DecisionSteps(
             obs=obs,
             reward=np.zeros(0, dtype=np.float32),
@@ -211,9 +208,9 @@ class TerminalSteps(Mapping):
         this TerminalSteps.
         """
         if self._agent_id_to_index is None:
-            self._agent_id_to_index = {}
-            for a_idx, a_id in enumerate(self.agent_id):
-                self._agent_id_to_index[a_id] = a_idx
+            self._agent_id_to_index = {
+                a_id: a_idx for a_idx, a_id in enumerate(self.agent_id)
+            }
         return self._agent_id_to_index
 
     def __len__(self) -> int:
@@ -229,9 +226,7 @@ class TerminalSteps(Mapping):
         if agent_id not in self.agent_id_to_index:
             raise KeyError(f"agent_id {agent_id} is not present in the TerminalSteps")
         agent_index = self._agent_id_to_index[agent_id]  # type: ignore
-        agent_obs = []
-        for batched_obs in self.obs:
-            agent_obs.append(batched_obs[agent_index])
+        agent_obs = [batched_obs[agent_index] for batched_obs in self.obs]
         group_id = self.group_id[agent_index]
         return TerminalStep(
             obs=agent_obs,
@@ -251,9 +246,10 @@ class TerminalSteps(Mapping):
         Returns an empty TerminalSteps.
         :param spec: The BehaviorSpec for the TerminalSteps
         """
-        obs: List[np.ndarray] = []
-        for sen_spec in spec.observation_specs:
-            obs += [np.zeros((0,) + sen_spec.shape, dtype=np.float32)]
+        obs: List[np.ndarray] = [
+            np.zeros((0,) + sen_spec.shape, dtype=np.float32)
+            for sen_spec in spec.observation_specs
+        ]
         return TerminalSteps(
             obs=obs,
             reward=np.zeros(0, dtype=np.float32),

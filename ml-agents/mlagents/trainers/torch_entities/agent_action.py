@@ -40,8 +40,7 @@ class AgentAction(NamedTuple):
         if self.continuous_tensor is not None:
             _cont = self.continuous_tensor[start:end]
         if self.discrete_list is not None and len(self.discrete_list) > 0:
-            for _disc in self.discrete_list:
-                _disc_list.append(_disc[start:end])
+            _disc_list.extend(_disc[start:end] for _disc in self.discrete_list)
         return AgentAction(_cont, _disc_list)
 
     def to_action_tuple(self, clip: bool = False) -> ActionTuple:

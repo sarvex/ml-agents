@@ -44,7 +44,6 @@ class PettingZooEnvFactory:
                     _env = default_registry[self.env_id].make(**kwargs)
                 except UnityWorkerInUseException:
                     port += 1
-                    pass
         else:
             _env = default_registry[self.env_id].make(**kwargs)
         return UnityAECEnv(_env, seed)

@@ -12,9 +12,8 @@ import os.path
 
 
 def basic_options(extra_args=None):
-    extra_args = extra_args or {}
     args = ["basic_path"]
-    if extra_args:
+    if extra_args := extra_args or {}:
         args += [f"{k}={v}" for k, v in extra_args.items()]
     return parse_command_line(args)
 

@@ -69,16 +69,18 @@ class SimpleEnvManager(EnvManager):
 
     @timed
     def _take_step(self, last_step: EnvironmentStep) -> Dict[BehaviorName, ActionInfo]:
-        all_action_info: Dict[str, ActionInfo] = {}
-        for brain_name, step_tuple in last_step.current_all_step_result.items():
-            all_action_info[brain_name] = self.policies[brain_name].get_action(
+        all_action_info: Dict[str, ActionInfo] = {
+            brain_name: self.policies[brain_name].get_action(
                 step_tuple[0],
                 0,  # As there is only one worker, we assign the worker_id to 0.
             )
+            for brain_name, step_tuple in last_step.current_all_step_result.items()
+        }
         return all_action_info
 
     def _generate_all_results(self) -> AllStepResult:
-        all_step_result: AllStepResult = {}
-        for brain_name in self.env.behavior_specs:
-            all_step_result[brain_name] = self.env.get_steps(brain_name)
+        all_step_result: AllStepResult = {
+            brain_name: self.env.get_steps(brain_name)
+            for brain_name in self.env.behavior_specs
+        }
         return all_step_result

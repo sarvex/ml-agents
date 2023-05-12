@@ -49,11 +49,11 @@ class RemoteRegistryEntry(BaseRegistryEntry):
         constructor of the UnityEnvironment (except for the file_name argument)
         """
         url = None
-        if platform == "linux" or platform == "linux2":
+        if platform in ["linux", "linux2"]:
             url = self._linux_url
         if platform == "darwin":
             url = self._darwin_url
-        if platform == "win32":
+        elif platform == "win32":
             url = self._win_url
         if url is None:
             raise FileNotFoundError(
@@ -66,9 +66,8 @@ class RemoteRegistryEntry(BaseRegistryEntry):
         if "file_name" in kwargs:
             kwargs.pop("file_name")
         args: List[str] = []
-        if "additional_args" in kwargs:
-            if kwargs["additional_args"] is not None:
-                args += kwargs["additional_args"]
+        if "additional_args" in kwargs and kwargs["additional_args"] is not None:
+            args += kwargs["additional_args"]
         if self._add_args is not None:
             args += self._add_args
         kwargs["additional_args"] = args

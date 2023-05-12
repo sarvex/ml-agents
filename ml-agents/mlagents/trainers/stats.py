@@ -27,16 +27,15 @@ def _dict_to_str(param_dict: Dict[str, Any], num_tabs: int) -> str:
     """
     if not isinstance(param_dict, dict):
         return str(param_dict)
-    else:
-        append_newline = "\n" if num_tabs > 0 else ""
-        return append_newline + "\n".join(
-            [
-                "\t"
-                + "  " * num_tabs
-                + f"{x}:\t{_dict_to_str(param_dict[x], num_tabs + 1)}"
-                for x in param_dict
-            ]
-        )
+    append_newline = "\n" if num_tabs > 0 else ""
+    return append_newline + "\n".join(
+        [
+            "\t"
+            + "  " * num_tabs
+            + f"{x}:\t{_dict_to_str(param_dict[x], num_tabs + 1)}"
+            for x in param_dict
+        ]
+    )
 
 
 class StatsSummary(NamedTuple):
@@ -172,9 +171,11 @@ class ConsoleWriter(StatsWriter):
                 is_training = "Training"
 
         elapsed_time = time.time() - self.training_start_time
-        log_info: List[str] = [category]
-        log_info.append(f"Step: {step}")
-        log_info.append(f"Time Elapsed: {elapsed_time:0.3f} s")
+        log_info: List[str] = [
+            category,
+            f"Step: {step}",
+            f"Time Elapsed: {elapsed_time:0.3f} s",
+        ]
         if "Environment/Cumulative Reward" in values:
             stats_summary = values["Environment/Cumulative Reward"]
             if self.rank is not None:
@@ -192,8 +193,7 @@ class ConsoleWriter(StatsWriter):
                 elo_stats = values["Self-play/ELO"]
                 log_info.append(f"ELO: {elo_stats.mean:0.3f}")
         else:
-            log_info.append("No episode was completed since last summary")
-            log_info.append(is_training)
+            log_info.extend(("No episode was completed since last summary", is_training))
         logger.info(". ".join(log_info) + ".")
 
     def add_property(
@@ -201,9 +201,7 @@ class ConsoleWriter(StatsWriter):
     ) -> None:
         if property_type == StatsPropertyType.HYPERPARAMETERS:
             logger.info(
-                """Hyperparameters for behavior name {}: \n{}""".format(
-                    category, _dict_to_str(value, 0)
-                )
+                f"""Hyperparameters for behavior name {category}: \n{_dict_to_str(value, 0)}"""
             )
         elif property_type == StatsPropertyType.SELF_PLAY:
             assert isinstance(value, bool)
@@ -270,8 +268,7 @@ class TensorboardWriter(StatsWriter):
                     os.remove(full_fname)
                 except OSError:
                     logger.error(
-                        "{} was left over from a previous run and "
-                        "not deleted.".format(full_fname)
+                        f"{full_fname} was left over from a previous run and not deleted."
                     )
 
     def add_property(

@@ -29,15 +29,12 @@ def _escape_non_none(s: Optional[str]) -> str:
     :param s:
     :return:
     """
-    if s is not None:
-        return f'"{s}"'
-    else:
-        return "None"
+    return f'"{s}"' if s is not None else "None"
 
 
 def extract_version_string(filename):
     with open(filename) as f:
-        for line in f.readlines():
+        for line in f:
             if line.startswith(VERSION_LINE_START):
                 return line.replace(VERSION_LINE_START, "").strip()
     return None
@@ -66,9 +63,13 @@ def set_version(
     release_tag: Optional[str],
 ) -> None:
     # Sanity check - make sure test tags have a test or dev version
-    if release_tag and "test" in release_tag:
-        if not ("dev" in python_version or "test" in python_version):
-            raise RuntimeError('Test tags must use a "test" or "dev" version.')
+    if (
+        release_tag
+        and "test" in release_tag
+        and "dev" not in python_version
+        and "test" not in python_version
+    ):
+        raise RuntimeError('Test tags must use a "test" or "dev" version.')
 
     new_contents = PYTHON_VERSION_FILE_TEMPLATE.format(
         version=_escape_non_none(python_version),

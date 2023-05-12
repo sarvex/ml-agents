@@ -78,7 +78,7 @@ class UnityToGymWrapper(gym.Env):
                 "There are no observations provided by the environment."
             )
 
-        if not self._get_n_vis_obs() >= 1 and uint8_visual:
+        if self._get_n_vis_obs() < 1 and uint8_visual:
             logger.warning(
                 "uint8_visual was set to true, but visual observations are not in use. "
                 "This setting will not have any effect."
@@ -108,12 +108,11 @@ class UnityToGymWrapper(gym.Env):
             branches = self.group_spec.action_spec.discrete_branches
             if self.group_spec.action_spec.discrete_size == 1:
                 self._action_space = spaces.Discrete(branches[0])
+            elif flatten_branched:
+                self._flattener = ActionFlattener(branches)
+                self._action_space = self._flattener.action_space
             else:
-                if flatten_branched:
-                    self._flattener = ActionFlattener(branches)
-                    self._action_space = self._flattener.action_space
-                else:
-                    self._action_space = spaces.MultiDiscrete(branches)
+                self._action_space = spaces.MultiDiscrete(branches)
 
         elif self.group_spec.action_spec.is_continuous():
             if flatten_branched:
@@ -200,28 +199,24 @@ class UnityToGymWrapper(gym.Env):
         self._env.step()
         decision_step, terminal_step = self._env.get_steps(self.name)
         self._check_agents(max(len(decision_step), len(terminal_step)))
-        if len(terminal_step) != 0:
-            # The agent is done
-            self.game_over = True
-            return self._single_step(terminal_step)
-        else:
+        if len(terminal_step) == 0:
             return self._single_step(decision_step)
+        # The agent is done
+        self.game_over = True
+        return self._single_step(terminal_step)
 
     def _single_step(self, info: Union[DecisionSteps, TerminalSteps]) -> GymStepResult:
         if self._allow_multiple_obs:
             visual_obs = self._get_vis_obs_list(info)
-            visual_obs_list = []
-            for obs in visual_obs:
-                visual_obs_list.append(self._preprocess_single(obs[0]))
+            visual_obs_list = [self._preprocess_single(obs[0]) for obs in visual_obs]
             default_observation = visual_obs_list
             if self._get_vec_obs_size() >= 1:
                 default_observation.append(self._get_vector_obs(info)[0, :])
+        elif self._get_n_vis_obs() >= 1:
+            visual_obs = self._get_vis_obs_list(info)
+            default_observation = self._preprocess_single(visual_obs[0][0])
         else:
-            if self._get_n_vis_obs() >= 1:
-                visual_obs = self._get_vis_obs_list(info)
-                default_observation = self._preprocess_single(visual_obs[0][0])
-            else:
-                default_observation = self._get_vector_obs(info)[0, :]
+            default_observation = self._get_vector_obs(info)[0, :]
 
         if self._get_n_vis_obs() >= 1:
             visual_obs = self._get_vis_obs_list(info)
@@ -238,43 +233,42 @@ class UnityToGymWrapper(gym.Env):
             return single_visual_obs
 
     def _get_n_vis_obs(self) -> int:
-        result = 0
-        for obs_spec in self.group_spec.observation_specs:
-            if len(obs_spec.shape) == 3:
-                result += 1
-        return result
+        return sum(
+            1
+            for obs_spec in self.group_spec.observation_specs
+            if len(obs_spec.shape) == 3
+        )
 
     def _get_vis_obs_shape(self) -> List[Tuple]:
-        result: List[Tuple] = []
-        for obs_spec in self.group_spec.observation_specs:
-            if len(obs_spec.shape) == 3:
-                result.append(obs_spec.shape)
+        result: List[Tuple] = [
+            obs_spec.shape
+            for obs_spec in self.group_spec.observation_specs
+            if len(obs_spec.shape) == 3
+        ]
         return result
 
     def _get_vis_obs_list(
         self, step_result: Union[DecisionSteps, TerminalSteps]
     ) -> List[np.ndarray]:
-        result: List[np.ndarray] = []
-        for obs in step_result.obs:
-            if len(obs.shape) == 4:
-                result.append(obs)
+        result: List[np.ndarray] = [
+            obs for obs in step_result.obs if len(obs.shape) == 4
+        ]
         return result
 
     def _get_vector_obs(
         self, step_result: Union[DecisionSteps, TerminalSteps]
     ) -> np.ndarray:
-        result: List[np.ndarray] = []
-        for obs in step_result.obs:
-            if len(obs.shape) == 2:
-                result.append(obs)
+        result: List[np.ndarray] = [
+            obs for obs in step_result.obs if len(obs.shape) == 2
+        ]
         return np.concatenate(result, axis=1)
 
     def _get_vec_obs_size(self) -> int:
-        result = 0
-        for obs_spec in self.group_spec.observation_specs:
-            if len(obs_spec.shape) == 1:
-                result += obs_spec.shape[0]
-        return result
+        return sum(
+            obs_spec.shape[0]
+            for obs_spec in self.group_spec.observation_specs
+            if len(obs_spec.shape) == 1
+        )
 
     def render(self, mode="rgb_array"):
         """
@@ -337,7 +331,7 @@ class ActionFlattener:
         self.action_space = spaces.Discrete(len(self.action_lookup))
 
     @classmethod
-    def _create_lookup(self, branched_action_space):
+    def _create_lookup(cls, branched_action_space):
         """
         Creates a Dict that maps discrete actions (scalars) to branched actions (lists).
         Each key in the Dict maps to one unique set of branched actions, and each value
@@ -345,11 +339,7 @@ class ActionFlattener:
         """
         possible_vals = [range(_num) for _num in branched_action_space]
         all_actions = [list(_action) for _action in itertools.product(*possible_vals)]
-        # Dict should be faster than List for large action spaces
-        action_lookup = {
-            _scalar: _action for (_scalar, _action) in enumerate(all_actions)
-        }
-        return action_lookup
+        return dict(enumerate(all_actions))
 
     def lookup_action(self, action):
         """

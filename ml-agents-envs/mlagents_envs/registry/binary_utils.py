@@ -35,7 +35,7 @@ def get_local_binary_path(name: str, url: str, tmp_dir: Optional[str] = None) ->
     """
     NUMBER_ATTEMPTS = 5
     tmp_dir = tmp_dir or tempfile.gettempdir()
-    lock = FileLock(os.path.join(tmp_dir, name + ".lock"))
+    lock = FileLock(os.path.join(tmp_dir, f"{name}.lock"))
     with lock:
         path = get_local_binary_path_if_exists(name, url, tmp_dir=tmp_dir)
         if path is None:
@@ -79,20 +79,17 @@ def get_local_binary_path_if_exists(name: str, url: str, tmp_dir: str) -> Option
     _, bin_dir = get_tmp_dirs(tmp_dir)
     extension = None
 
-    if platform == "linux" or platform == "linux2":
+    if platform in ["linux", "linux2"]:
         extension = "*.x86_64"
     if platform == "darwin":
         extension = "*.app"
-    if platform == "win32":
+    elif platform == "win32":
         extension = "*.exe"
     if extension is None:
         raise NotImplementedError("No extensions found for this platform.")
-    url_hash = "-" + hashlib.md5(url.encode()).hexdigest()
+    url_hash = f"-{hashlib.md5(url.encode()).hexdigest()}"
     path = os.path.join(bin_dir, name + url_hash, "**", extension)
-    candidates = glob.glob(path, recursive=True)
-    if len(candidates) == 0:
-        return None
-    else:
+    if candidates := glob.glob(path, recursive=True):
         for c in candidates:
             # Unity sometimes produces another .exe file that we must filter out
             if "UnityCrashHandler64" not in c:
@@ -101,7 +98,7 @@ def get_local_binary_path_if_exists(name: str, url: str, tmp_dir: str) -> Option
                     shutil.rmtree(c)
                     return None
                 return c
-        return None
+    return None
 
 
 def _get_tmp_dir_helper(tmp_dir: Optional[str] = None) -> Tuple[str, str]:
@@ -152,7 +149,7 @@ def download_and_extract_zip(
     :param: tmp_dir: Optional override for the temporary directory to save binaries and zips in.
     """
     zip_dir, bin_dir = get_tmp_dirs(tmp_dir)
-    url_hash = "-" + hashlib.md5(url.encode()).hexdigest()
+    url_hash = f"-{hashlib.md5(url.encode()).hexdigest()}"
     binary_path = os.path.join(bin_dir, name + url_hash)
     if os.path.exists(binary_path):
         shutil.rmtree(binary_path)
@@ -164,7 +161,7 @@ def download_and_extract_zip(
         e.reason = f"{e.reason} {url}"  # type: ignore
         raise
     zip_size = int(request.headers["content-length"])
-    zip_file_path = os.path.join(zip_dir, str(uuid.uuid4()) + ".zip")
+    zip_file_path = os.path.join(zip_dir, f"{str(uuid.uuid4())}.zip")
     with open(zip_file_path, "wb") as zip_file:
         downloaded = 0
         while True:
@@ -188,7 +185,7 @@ def download_and_extract_zip(
     os.remove(zip_file_path)
 
     # Give permission
-    for f in glob.glob(binary_path + "/**/*", recursive=True):
+    for f in glob.glob(f"{binary_path}/**/*", recursive=True):
         # 16877 is octal 40755, which denotes a directory with permissions 755
         os.chmod(f, 16877)
     print_progress(f"  Cleaning up {name}", 100)
@@ -219,14 +216,14 @@ def load_remote_manifest(url: str) -> Dict[str, Any]:
     except urllib.error.HTTPError as e:  # type: ignore
         e.reason = f"{e.reason} {url}"  # type: ignore
         raise
-    manifest_path = os.path.join(tmp_dir, str(uuid.uuid4()) + ".yaml")
+    manifest_path = os.path.join(tmp_dir, f"{str(uuid.uuid4())}.yaml")
     with open(manifest_path, "wb") as manifest:
         while True:
-            buffer = request.read(BLOCK_SIZE)
-            if not buffer:
+            if buffer := request.read(BLOCK_SIZE):
+                manifest.write(buffer)
+            else:
                 # There is nothing more to read
                 break
-            manifest.write(buffer)
     try:
         result = load_local_manifest(manifest_path)
     finally:
@@ -252,8 +249,6 @@ class ZipFileWithProgress(ZipFile):
         members = self.namelist()
         path = os.fspath(path)
         total = len(members)
-        n = 0
-        for zipinfo in members:
+        for n, zipinfo in enumerate(members, start=1):
             self.extract(zipinfo, path, None)  # type: ignore
-            n += 1
             print_progress(prefix, n / total * 100)

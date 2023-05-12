@@ -47,7 +47,7 @@ def check_and_structure(key: str, value: Any, class_type: type) -> Any:
 
 def check_hyperparam_schedules(val: Dict, trainer_type: str) -> Dict:
     # Check if beta and epsilon are set. If not, set to match learning rate schedule.
-    if trainer_type == "ppo" or trainer_type == "poca":
+    if trainer_type in {"ppo", "poca"}:
         if "beta_schedule" not in val.keys() and "learning_rate_schedule" in val.keys():
             val["beta_schedule"] = val["learning_rate_schedule"]
         if (
@@ -62,7 +62,7 @@ def strict_to_cls(d: Mapping, t: type) -> Any:
     if not isinstance(d, Mapping):
         raise TrainerConfigError(f"Unsupported config {d} for {t.__name__}.")
     d_copy: Dict[str, Any] = {}
-    d_copy.update(d)
+    d_copy |= d
     for key, val in d_copy.items():
         d_copy[key] = check_and_structure(key, val, t)
     return t(**d_copy)
@@ -496,11 +496,13 @@ class CompletionCriteriaSettings:
         # Is the min number of episodes reached
         if len(reward_buffer) < self.min_lesson_length:
             return False, smoothing
-        if self.measure == CompletionCriteriaSettings.MeasureType.PROGRESS:
-            if progress > self.threshold:
-                return True, smoothing
+        if (
+            self.measure == CompletionCriteriaSettings.MeasureType.PROGRESS
+            and progress > self.threshold
+        ):
+            return True, smoothing
         if self.measure == CompletionCriteriaSettings.MeasureType.REWARD:
-            if len(reward_buffer) < 1:
+            if not reward_buffer:
                 return False, smoothing
             measure = np.mean(reward_buffer)
             if math.isnan(measure):
@@ -647,14 +649,13 @@ class TrainerSettings(ExportableSettings):
 
     @network_settings.validator
     def _check_batch_size_seq_length(self, attribute, value):
-        if self.network_settings.memory is not None:
-            if (
-                self.network_settings.memory.sequence_length
-                > self.hyperparameters.batch_size
-            ):
-                raise TrainerConfigError(
-                    "When using memory, sequence length must be less than or equal to batch size. "
-                )
+        if self.network_settings.memory is not None and (
+            self.network_settings.memory.sequence_length
+            > self.hyperparameters.batch_size
+        ):
+            raise TrainerConfigError(
+                "When using memory, sequence length must be less than or equal to batch size. "
+            )
 
     @checkpoint_interval.validator
     def _set_checkpoint_interval(self, attribute, value):
@@ -682,7 +683,7 @@ class TrainerSettings(ExportableSettings):
         # Check if a default_settings was specified. If so, used those as the default
         # rather than an empty dict.
         if TrainerSettings.default_override is not None:
-            d_copy.update(cattr.unstructure(TrainerSettings.default_override))
+            d_copy |= cattr.unstructure(TrainerSettings.default_override)
 
         deep_update_dict(d_copy, d)
 
@@ -699,24 +700,20 @@ class TrainerSettings(ExportableSettings):
                     raise TrainerConfigError(
                         "Hyperparameters were specified but no trainer_type was given."
                     )
-                else:
-                    d_copy[key] = check_hyperparam_schedules(
-                        val, d_copy["trainer_type"]
+                d_copy[key] = check_hyperparam_schedules(
+                    val, d_copy["trainer_type"]
+                )
+                try:
+                    d_copy[key] = strict_to_cls(
+                        d_copy[key], all_trainer_settings[d_copy["trainer_type"]]
                     )
-                    try:
-                        d_copy[key] = strict_to_cls(
-                            d_copy[key], all_trainer_settings[d_copy["trainer_type"]]
-                        )
-                    except KeyError:
-                        raise TrainerConfigError(
-                            f"Settings for trainer type {d_copy['trainer_type']} were not found"
-                        )
+                except KeyError:
+                    raise TrainerConfigError(
+                        f"Settings for trainer type {d_copy['trainer_type']} were not found"
+                    )
             elif key == "max_steps":
                 d_copy[key] = int(float(val))
                 # In some legacy configs, max steps was specified as a float
-            # elif key == "even_checkpoints":
-            #     if val:
-            #         d_copy["checkpoint_interval"] = int(d_copy["max_steps"] / d_copy["keep_checkpoints"])
             elif key == "trainer_type":
                 if val not in all_trainer_types.keys():
                     raise TrainerConfigError(f"Invalid trainer type {val} was found")
@@ -909,19 +906,17 @@ class RunOptions(ExportableSettings):
         }
         _require_all_behaviors = True
         if config_path is not None:
-            configured_dict.update(load_config(config_path))
+            configured_dict |= load_config(config_path)
         else:
             # If we're not loading from a file, we don't require all behavior names to be specified.
             _require_all_behaviors = False
 
         # Use the YAML file values for all values not specified in the CLI.
-        for key in configured_dict.keys():
+        for key in configured_dict:
             # Detect bad config options
             if key not in attr.fields_dict(RunOptions):
                 raise TrainerConfigError(
-                    "The option {} was specified in your YAML file, but is invalid.".format(
-                        key
-                    )
+                    f"The option {key} was specified in your YAML file, but is invalid."
                 )
 
         # Override with CLI args
@@ -965,7 +960,7 @@ class RunOptions(ExportableSettings):
     ) -> "RunOptions":
         # If a default settings was specified, set the TrainerSettings class override
         if (
-            "default_settings" in options_dict.keys()
+            "default_settings" in options_dict
             and options_dict["default_settings"] is not None
         ):
             TrainerSettings.default_override = cattr.structure(

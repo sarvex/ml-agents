@@ -72,8 +72,7 @@ def create_test_poca_optimizer(dummy_config, use_rnn, use_discrete, use_visual):
     policy = TorchPolicy(
         0, mock_specs, trainer_settings.network_settings, SimpleActor, actor_kwargs
     )
-    optimizer = TorchPOCAOptimizer(policy, trainer_settings)
-    return optimizer
+    return TorchPOCAOptimizer(policy, trainer_settings)
 
 
 @pytest.mark.parametrize("discrete", [True, False], ids=["discrete", "continuous"])

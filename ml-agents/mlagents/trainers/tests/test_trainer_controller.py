@@ -56,8 +56,8 @@ def trainer_controller_with_start_learning_mocks(basic_trainer_controller):
     def take_step_sideeffect(env):
         tc.trainers["testbrain"].get_step += 1
         if (
-            not tc.trainers["testbrain"].get_step
-            <= tc.trainers["testbrain"].get_max_steps
+            tc.trainers["testbrain"].get_step
+            > tc.trainers["testbrain"].get_max_steps
         ):
             tc.trainers["testbrain"].should_still_train = False
         if tc.trainers["testbrain"].get_step > 10:

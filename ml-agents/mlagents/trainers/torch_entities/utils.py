@@ -116,10 +116,9 @@ class ModelUtils:
         :return: The current decayed value.
         """
         global_step = min(global_step, max_step)
-        decayed_value = (initial_value - min_value) * (
+        return (initial_value - min_value) * (
             1 - float(global_step) / max_step
         ) ** (power) + min_value
-        return decayed_value
 
     @staticmethod
     def get_encoder_for_type(encoder_type: EncoderType) -> nn.Module:
@@ -267,11 +266,10 @@ class ModelUtils:
         :return: A List of Tensors containing one tensor per branch.
         """
         action_idx = [0] + list(np.cumsum(action_size))
-        branched_logits = [
+        return [
             concatenated_logits[:, action_idx[i] : action_idx[i + 1]]
             for i in range(len(action_size))
         ]
-        return branched_logits
 
     @staticmethod
     def actions_to_onehot(
@@ -285,11 +283,10 @@ class ModelUtils:
         last dimension.
         :return: List of one-hot tensors, one representing each branch.
         """
-        onehot_branches = [
+        return [
             torch.nn.functional.one_hot(_act.T, action_size[i]).float()
             for i, _act in enumerate(discrete_actions.long().T)
         ]
-        return onehot_branches
 
     @staticmethod
     def dynamic_partition(
@@ -307,9 +304,10 @@ class ModelUtils:
         maximum possible index in the partitions argument.
         :return: A list of Tensor partitions (Their indices correspond to their partition index).
         """
-        res: List[torch.Tensor] = []
-        for i in range(num_partitions):
-            res += [data[(partitions == i).nonzero().squeeze(1)]]
+        res: List[torch.Tensor] = [
+            data[(partitions == i).nonzero().squeeze(1)]
+            for i in range(num_partitions)
+        ]
         return res
 
     @staticmethod
@@ -384,7 +382,7 @@ class ModelUtils:
             # Only adds entity max if it was known at construction
             if entity_max > 0:
                 entity_num_max += entity_max
-        if len(var_processors) > 0:
+        if var_processors:
             if sum(embedding_sizes):
                 x_self_encoder = LinearEncoder(
                     sum(embedding_sizes),
@@ -446,7 +444,4 @@ class ModelUtils:
         r_theta = torch.exp(log_probs - old_log_probs)
         p_opt_a = r_theta * advantage
         p_opt_b = torch.clamp(r_theta, 1.0 - epsilon, 1.0 + epsilon) * advantage
-        policy_loss = -1 * ModelUtils.masked_mean(
-            torch.min(p_opt_a, p_opt_b), loss_masks
-        )
-        return policy_loss
+        return -1 * ModelUtils.masked_mean(torch.min(p_opt_a, p_opt_b), loss_masks)

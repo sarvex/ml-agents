@@ -187,11 +187,9 @@ class TrainerController:
             self.logger.info(
                 "Learning was interrupted. Please wait while the graph is generated."
             )
-            if isinstance(ex, KeyboardInterrupt) or isinstance(
+            if not isinstance(ex, KeyboardInterrupt) and not isinstance(
                 ex, UnityCommunicatorStoppedException
             ):
-                pass
-            else:
                 # If the environment failed, we want to make sure to raise
                 # the exception so we exit the process with an return code of 1.
                 raise ex
@@ -282,8 +280,9 @@ class TrainerController:
 
         with hierarchical_timer("trainer_threads") as main_timer_node:
             for trainer_thread in self.trainer_threads:
-                thread_timer_stack = get_timer_stack_for_thread(trainer_thread)
-                if thread_timer_stack:
+                if thread_timer_stack := get_timer_stack_for_thread(
+                    trainer_thread
+                ):
                     main_timer_node.merge(
                         thread_timer_stack.root,
                         root_name="thread_root",

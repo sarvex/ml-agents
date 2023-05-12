@@ -286,7 +286,7 @@ class TorchSACOptimizer(TorchOptimizer):
         with torch.no_grad():
             _cont_ent_coef = self._log_ent_coef.continuous.exp()
             _disc_ent_coef = self._log_ent_coef.discrete.exp()
-            for name in values.keys():
+            for name in values:
                 if self._action_spec.discrete_size <= 0:
                     min_policy_qs[name] = torch.min(q1p_out[name], q2p_out[name])
                 else:
@@ -322,7 +322,7 @@ class TorchSACOptimizer(TorchOptimizer):
 
         value_losses = []
         if self._action_spec.discrete_size <= 0:
-            for name in values.keys():
+            for name in values:
                 with torch.no_grad():
                     v_backup = min_policy_qs[name] - torch.sum(
                         _cont_ent_coef * log_probs.continuous_tensor, dim=1
@@ -344,7 +344,7 @@ class TorchSACOptimizer(TorchOptimizer):
                     for i, _lp in enumerate(branched_per_action_ent)
                 ]
             )
-            for name in values.keys():
+            for name in values:
                 with torch.no_grad():
                     v_backup = min_policy_qs[name] - torch.mean(
                         branched_ent_bonus, axis=0
@@ -408,9 +408,7 @@ class TorchSACOptimizer(TorchOptimizer):
             batch_policy_loss += (
                 _cont_ent_coef * torch.sum(cont_log_probs, dim=1) - all_mean_q1
             )
-        policy_loss = ModelUtils.masked_mean(batch_policy_loss, loss_masks)
-
-        return policy_loss
+        return ModelUtils.masked_mean(batch_policy_loss, loss_masks)
 
     def sac_entropy_loss(
         self, log_probs: ActionLogProbs, loss_masks: torch.Tensor
@@ -488,12 +486,12 @@ class TorchSACOptimizer(TorchOptimizer):
             indexed by name. If none, don't update the reward signals.
         :return: Output from update process.
         """
-        rewards = {}
-        for name in self.reward_signals:
-            rewards[name] = ModelUtils.list_to_tensor(
+        rewards = {
+            name: ModelUtils.list_to_tensor(
                 batch[RewardSignalUtil.rewards_key(name)]
             )
-
+            for name in self.reward_signals
+        }
         n_obs = len(self.policy.behavior_spec.observation_specs)
         current_obs = ObsUtil.from_buffer(batch, n_obs)
         # Convert to tensors
@@ -518,7 +516,7 @@ class TorchSACOptimizer(TorchOptimizer):
             )
         ]
 
-        if len(memories_list) > 0:
+        if memories_list:
             memories = torch.stack(memories_list).unsqueeze(0)
             value_memories = torch.stack(value_memories_list).unsqueeze(0)
         else:
@@ -625,7 +623,7 @@ class TorchSACOptimizer(TorchOptimizer):
 
         # Update target network
         ModelUtils.soft_update(self._critic, self.target_network, self.tau)
-        update_stats = {
+        return {
             "Losses/Policy Loss": policy_loss.item(),
             "Losses/Value Loss": value_loss.item(),
             "Losses/Q1 Loss": q1_loss.item(),
@@ -639,8 +637,6 @@ class TorchSACOptimizer(TorchOptimizer):
             "Policy/Learning Rate": decay_lr,
         }
 
-        return update_stats
-
     def get_modules(self):
         modules = {
             "Optimizer:q_network": self.q_network,
@@ -651,5 +647,5 @@ class TorchSACOptimizer(TorchOptimizer):
             "Optimizer:entropy_optimizer": self.entropy_optimizer,
         }
         for reward_provider in self.reward_signals.values():
-            modules.update(reward_provider.get_modules())
+            modules |= reward_provider.get_modules()
         return modules

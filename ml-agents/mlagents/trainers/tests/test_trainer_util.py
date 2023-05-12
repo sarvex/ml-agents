@@ -63,7 +63,7 @@ def test_initialize_ppo_trainer(BehaviorSpecMock, dummy_config):
             param_manager=EnvironmentParameterManager(),
         )
         trainers = {}
-        for brain_name in training_behaviors.keys():
+        for brain_name in training_behaviors:
             trainers[brain_name] = trainer_factory.generate(brain_name)
         assert "testbrain" in trainers
         assert isinstance(trainers["testbrain"], PPOTrainer)

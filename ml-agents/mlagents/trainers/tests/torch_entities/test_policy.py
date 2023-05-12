@@ -35,8 +35,9 @@ def create_policy_mock(
         "conditional_sigma": False,
         "tanh_squash": False,
     }
-    policy = TorchPolicy(seed, mock_spec, network_settings, SimpleActor, actor_kwargs)
-    return policy
+    return TorchPolicy(
+        seed, mock_spec, network_settings, SimpleActor, actor_kwargs
+    )
 
 
 @pytest.mark.parametrize("discrete", [True, False], ids=["discrete", "continuous"])

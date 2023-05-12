@@ -21,14 +21,13 @@ def table_line(version_info, bold=False):
         f"{bold_str}[download]({version_info.download_link}){bold_str}",
     ]
     if version_info.is_main:
-        cells.append("--")  # python
-        cells.append("--")  # Unity
+        cells.extend(("--", "--"))
     else:
-        cells.append(
-            f"{bold_str}[{version_info.python_verion}]({version_info.pypi_link}){bold_str}"
-        )
-        cells.append(
-            f"{bold_str}[{version_info.csharp_version}]({version_info.package_link}){bold_str}"
+        cells.extend(
+            (
+                f"{bold_str}[{version_info.python_verion}]({version_info.pypi_link}){bold_str}",
+                f"{bold_str}[{version_info.csharp_version}]({version_info.package_link}){bold_str}",
+            )
         )
     joined_cells = " | ".join(cells)
     return f"| {joined_cells} |"
@@ -52,7 +51,7 @@ class ReleaseInfo(NamedTuple):
     @property
     def release_datetime(self) -> datetime:
         if self.is_main:
-            return datetime.today()
+            return datetime.now()
         return datetime.strptime(self.release_date, "%B %d, %Y")
 
     @property
@@ -61,7 +60,7 @@ class ReleaseInfo(NamedTuple):
         Days since this version was released.
         :return:
         """
-        return (datetime.today() - self.release_datetime).days
+        return (datetime.now() - self.release_datetime).days
 
     @property
     def display_name(self) -> str:
@@ -98,7 +97,7 @@ class ReleaseInfo(NamedTuple):
 
         # For release_X branches, docs are on a separate tag.
         if self.release_tag.startswith("release"):
-            docs_name = self.release_tag + "_docs"
+            docs_name = f"{self.release_tag}_docs"
         else:
             docs_name = self.release_tag
         return f"https://github.com/Unity-Technologies/ml-agents/tree/{docs_name}/docs/Readme.md"
@@ -148,22 +147,19 @@ versions = [
 
 sorted_versions = sorted(versions, key=lambda x: x.release_datetime, reverse=True)
 
-highlight_versions = set()
-# Highlight the most recent verified version
-highlight_versions.add([v for v in sorted_versions if v.is_verified][0])
-# Highlight the most recent regular version
-highlight_versions.add(
-    [v for v in sorted_versions if (not v.is_verified and not v.is_main)][0]
-)
-
+highlight_versions = {
+    [v for v in sorted_versions if v.is_verified][0],
+    [v for v in sorted_versions if (not v.is_verified and not v.is_main)][0],
+}
 count_by_verified = Counter()
 
 for version_info in sorted_versions:
     highlight = version_info in highlight_versions
-    if version_info.elapsed_days > MAX_DAYS:
-        # Make sure we always have at least regular and one verified entry
-        if count_by_verified[version_info.is_verified] > 0:
-            continue
+    if (
+        version_info.elapsed_days > MAX_DAYS
+        and count_by_verified[version_info.is_verified] > 0
+    ):
+        continue
     print(table_line(version_info, highlight))
     count_by_verified[version_info.is_verified] += 1
 

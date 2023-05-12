@@ -27,8 +27,6 @@ def test_timers() -> None:
 
             with timers.hierarchical_timer("post_raise"):
                 assert raised
-                pass
-
         # We expect the hierarchy to look like
         #   (root)
         #       top_level

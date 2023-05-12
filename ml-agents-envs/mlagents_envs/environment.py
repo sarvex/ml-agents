@@ -314,19 +314,18 @@ class UnityEnvironment(BaseEnv):
         self._side_channel_manager.process_side_channel_message(output.side_channel)
 
     def reset(self) -> None:
-        if self._loaded:
-            outputs = self._communicator.exchange(
-                self._generate_reset_input(), self._poll_process
-            )
-            if outputs is None:
-                raise UnityCommunicatorStoppedException("Communicator has exited.")
-            self._update_behavior_specs(outputs)
-            rl_output = outputs.rl_output
-            self._update_state(rl_output)
-            self._is_first_message = False
-            self._env_actions.clear()
-        else:
+        if not self._loaded:
             raise UnityEnvironmentException("No Unity environment is loaded.")
+        outputs = self._communicator.exchange(
+            self._generate_reset_input(), self._poll_process
+        )
+        if outputs is None:
+            raise UnityCommunicatorStoppedException("Communicator has exited.")
+        self._update_behavior_specs(outputs)
+        rl_output = outputs.rl_output
+        self._update_state(rl_output)
+        self._is_first_message = False
+        self._env_actions.clear()
 
     @timed
     def step(self) -> None:
@@ -390,9 +389,7 @@ class UnityEnvironment(BaseEnv):
             ]
         except IndexError as ie:
             raise IndexError(
-                "agent_id {} is did not request a decision at the previous step".format(
-                    agent_id
-                )
+                f"agent_id {agent_id} is did not request a decision at the previous step"
             ) from ie
         if action_spec.continuous_size > 0:
             self._env_actions[behavior_name].continuous[index] = action.continuous[0, :]

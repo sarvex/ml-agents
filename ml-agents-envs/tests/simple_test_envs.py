@@ -112,13 +112,9 @@ class SimpleEnvironment(BaseEnv):
             self.step_result[name] = None
 
     def _make_observation_specs(self) -> List[ObservationSpec]:
-        obs_shape: List[Any] = []
-        for _ in range(self.num_vector):
-            obs_shape.append((self.vec_obs_size,))
-        for _ in range(self.num_visual):
-            obs_shape.append(self.vis_obs_size)
-        for _ in range(self.num_var_len):
-            obs_shape.append(self.var_len_obs_size)
+        obs_shape: List[Any] = [(self.vec_obs_size,) for _ in range(self.num_vector)]
+        obs_shape.extend(self.vis_obs_size for _ in range(self.num_visual))
+        obs_shape.extend(self.var_len_obs_size for _ in range(self.num_var_len))
         obs_spec = create_observation_specs_with_shapes(obs_shape)
         if self.goal_indices is not None:
             for i in range(len(obs_spec)):
@@ -132,20 +128,23 @@ class SimpleEnvironment(BaseEnv):
         return obs_spec
 
     def _make_obs(self, value: float) -> List[np.ndarray]:
-        obs = []
-        for _ in range(self.num_vector):
-            obs.append(np.ones((1, self.vec_obs_size), dtype=np.float32) * value)
-        for _ in range(self.num_visual):
-            obs.append(np.ones((1,) + self.vis_obs_size, dtype=np.float32) * value)
-        for _ in range(self.num_var_len):
-            obs.append(np.ones((1,) + self.var_len_obs_size, dtype=np.float32) * value)
+        obs = [
+            np.ones((1, self.vec_obs_size), dtype=np.float32) * value
+            for _ in range(self.num_vector)
+        ]
+        obs.extend(
+            np.ones((1,) + self.vis_obs_size, dtype=np.float32) * value
+            for _ in range(self.num_visual)
+        )
+        obs.extend(
+            np.ones((1,) + self.var_len_obs_size, dtype=np.float32) * value
+            for _ in range(self.num_var_len)
+        )
         return obs
 
     @property
     def behavior_specs(self):
-        behavior_dict = {}
-        for n in self.names:
-            behavior_dict[n] = self.behavior_spec
+        behavior_dict = {n: self.behavior_spec for n in self.names}
         return BehaviorMapping(behavior_dict)
 
     def set_action_for_agent(self, behavior_name, agent_id, action):
@@ -161,19 +160,16 @@ class SimpleEnvironment(BaseEnv):
         deltas = []
         _act = self.action[name]
         if self.action_spec.continuous_size > 0 and not _act:
-            for _cont in _act.continuous[0]:
-                deltas.append(_cont)
+            deltas.extend(iter(_act.continuous[0]))
         if self.action_spec.discrete_size > 0 and not _act:
-            for _disc in _act.discrete[0]:
-                deltas.append(1 if _disc else -1)
+            deltas.extend(1 if _disc else -1 for _disc in _act.discrete[0])
         for i, _delta in enumerate(deltas):
             _delta = clamp(_delta, -self.step_size, self.step_size)
             self.positions[name][i] += _delta
             self.positions[name][i] = clamp(self.positions[name][i], -1, 1)
             self.step_count[name] += 1
             # Both must be in 1.0 to be done
-        done = all(pos >= 1.0 or pos <= -1.0 for pos in self.positions[name])
-        return done
+        return all(pos >= 1.0 or pos <= -1.0 for pos in self.positions[name])
 
     def _generate_mask(self):
         action_mask = None
@@ -344,9 +340,7 @@ class MultiAgentEnvironment(BaseEnv):
 
     @property
     def behavior_specs(self):
-        behavior_dict = {}
-        for n in self.names:
-            behavior_dict[n] = self.behavior_spec
+        behavior_dict = {n: self.behavior_spec for n in self.names}
         return BehaviorMapping(behavior_dict)
 
     def set_action_for_agent(self, behavior_name, agent_id, action):
@@ -397,12 +391,11 @@ class MultiAgentEnvironment(BaseEnv):
             if not self.dones[name_and_num]:
                 dec_agent_id.append(i)
                 dec_group_id.append(1)
-                if len(dec_vec_obs) > 0:
+                if dec_vec_obs:
                     for j, obs in enumerate(_dec.obs):
                         dec_vec_obs[j] = np.concatenate((dec_vec_obs[j], obs), axis=0)
                 else:
-                    for obs in _dec.obs:
-                        dec_vec_obs.append(obs)
+                    dec_vec_obs.extend(iter(_dec.obs))
                 dec_reward.append(_dec.reward[0])
                 dec_group_reward.append(_dec.group_reward[0])
                 if _dec.action_mask is not None:
@@ -417,12 +410,11 @@ class MultiAgentEnvironment(BaseEnv):
             if len(_term.reward) > 0 and name_and_num in self.just_died:
                 ter_agent_id.append(i)
                 ter_group_id.append(1)
-                if len(ter_vec_obs) > 0:
+                if ter_vec_obs:
                     for j, obs in enumerate(_term.obs):
                         ter_vec_obs[j] = np.concatenate((ter_vec_obs[j], obs), axis=0)
                 else:
-                    for obs in _term.obs:
-                        ter_vec_obs.append(obs)
+                    ter_vec_obs.extend(iter(_term.obs))
                 ter_reward.append(_term.reward[0])
                 ter_group_reward.append(_term.group_reward[0])
                 interrupted.append(False)

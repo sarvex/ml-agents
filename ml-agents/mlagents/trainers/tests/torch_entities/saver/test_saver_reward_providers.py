@@ -143,4 +143,4 @@ def test_load_different_reward_provider(caplog, tmp_path, optimizer):
     assert len(optimizer2.critic.value_heads.stream_names) == 1
     model_saver2.initialize_or_load()  # This is to load the optimizers
     messages = [rec.message for rec in caplog.records if rec.levelno == WARNING]
-    assert len(messages) > 0
+    assert messages

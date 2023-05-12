@@ -39,10 +39,9 @@ class TrainingAnalyticsSideChannel(DefaultTrainingAnalyticsSideChannel):
 
     @classmethod
     def _hash(cls, data: str) -> str:
-        res = hmac.new(
+        return hmac.new(
             cls.__vendorKey.encode("utf-8"), data.encode("utf-8"), hashlib.sha256
         ).hexdigest()
-        return res
 
     def on_message_received(self, msg: IncomingMessage) -> None:
         raise UnityCommunicationException(

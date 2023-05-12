@@ -94,9 +94,8 @@ def run_standalone_build(
         )
 
     # Print if we fail or want verbosity.
-    if verbose or res.returncode != 0:
-        if log_output_path:
-            subprocess.run(["cat", log_output_path])
+    if (verbose or res.returncode != 0) and log_output_path:
+        subprocess.run(["cat", log_output_path])
 
     return res.returncode
 
@@ -145,8 +144,8 @@ def init_venv(
     if extra_packages:
         pip_commands += extra_packages
 
+    pip_index_url = "--index-url https://artifactory.prd.it.unity3d.com/artifactory/api/pypi/pypi/simple"
     for cmd in pip_commands:
-        pip_index_url = "--index-url https://artifactory.prd.it.unity3d.com/artifactory/api/pypi/pypi/simple"
         print(f'Running "python3 -m pip install -q {cmd} {pip_index_url}"')
         subprocess.check_call(
             f"python3 -m pip install -q {cmd} {pip_index_url}", shell=True

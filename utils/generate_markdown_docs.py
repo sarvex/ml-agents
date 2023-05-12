@@ -36,7 +36,6 @@ def remove_trailing_whitespace(filename):
     :param filename: The name of the file to process
     :type str:
     """
-    num_changed = 0
     # open the source file
     with open(filename, "rb") as f:
         source_file = f.read().decode()
@@ -51,7 +50,7 @@ def remove_trailing_whitespace(filename):
 
     # compare source and destination and write only if changed
     if source_file != destination_file:
-        num_changed += 1
+        num_changed = 0 + 1
         with open(filename, "wb") as f:
             f.write(destination_file.encode())
 
@@ -82,8 +81,7 @@ if __name__ == "__main__":
                 old_hash = hash_file(output_file_name)
                 module_args = []
                 for submodule in submodules:
-                    module_args.append("-m")
-                    module_args.append(f"{module_name}.{submodule}")
+                    module_args.extend(("-m", f"{module_name}.{submodule}"))
                 with open(output_file_name, "w") as output_file:
                     subprocess_args = [
                         "pydoc-markdown",

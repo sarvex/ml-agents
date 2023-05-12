@@ -130,7 +130,7 @@ class TorchPPOOptimizer(TorchOptimizer):
             ModelUtils.list_to_tensor(batch[BufferKey.MEMORY][i])
             for i in range(0, len(batch[BufferKey.MEMORY]), self.policy.sequence_length)
         ]
-        if len(memories) > 0:
+        if memories:
             memories = torch.stack(memories).unsqueeze(0)
 
         # Get value memories
@@ -140,7 +140,7 @@ class TorchPPOOptimizer(TorchOptimizer):
                 0, len(batch[BufferKey.CRITIC_MEMORY]), self.policy.sequence_length
             )
         ]
-        if len(value_memories) > 0:
+        if value_memories:
             value_memories = torch.stack(value_memories).unsqueeze(0)
 
         run_out = self.policy.actor.get_stats(
@@ -184,7 +184,7 @@ class TorchPPOOptimizer(TorchOptimizer):
         loss.backward()
 
         self.optimizer.step()
-        update_stats = {
+        return {
             # NOTE: abs() is not technically correct, but matches the behavior in TensorFlow.
             # TODO: After PyTorch is default, change to something more correct.
             "Losses/Policy Loss": torch.abs(policy_loss).item(),
@@ -194,8 +194,6 @@ class TorchPPOOptimizer(TorchOptimizer):
             "Policy/Beta": decay_bet,
         }
 
-        return update_stats
-
     # TODO move module update into TorchOptimizer for reward_provider
     def get_modules(self):
         modules = {
@@ -203,5 +201,5 @@ class TorchPPOOptimizer(TorchOptimizer):
             "Optimizer:critic": self._critic,
         }
         for reward_provider in self.reward_signals.values():
-            modules.update(reward_provider.get_modules())
+            modules |= reward_provider.get_modules()
         return modules

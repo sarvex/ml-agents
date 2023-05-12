@@ -14,7 +14,7 @@ def test_run_environment(env_name):
 
     try:
         # Examine environment parameters
-        print(str(env))
+        print(env)
 
         # Reset the environment
         initial_observations = env.reset()

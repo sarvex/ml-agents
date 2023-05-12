@@ -36,9 +36,9 @@ def test_agent_action_group_from_buffer():
     agent_1_act = gact[1]
     assert agent_1_act.continuous_tensor.shape == (buff.num_experiences, 5)
     assert agent_1_act.discrete_tensor.shape == (buff.num_experiences, 4)
-    assert (agent_1_act.continuous_tensor[0:3] > 0).all()
+    assert (agent_1_act.continuous_tensor[:3] > 0).all()
     assert (agent_1_act.continuous_tensor[3:] == 0).all()
-    assert (agent_1_act.discrete_tensor[0:3] > 0).all()
+    assert (agent_1_act.discrete_tensor[:3] > 0).all()
     assert (agent_1_act.discrete_tensor[3:] == 0).all()
 
 

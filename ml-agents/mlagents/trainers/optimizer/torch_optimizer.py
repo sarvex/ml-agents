@@ -90,14 +90,12 @@ class TorchOptimizer(Optimizer):
         # Evaluate other trajectories, carrying over _mem after each
         # trajectory
         for seq_num in range(num_experiences // self.policy.sequence_length):
-            seq_obs = []
             for _ in range(self.policy.sequence_length):
                 all_next_memories.append(ModelUtils.to_numpy(_mem.squeeze()))
             start = seq_num * self.policy.sequence_length
             end = (seq_num + 1) * self.policy.sequence_length
 
-            for _obs in tensor_obs:
-                seq_obs.append(_obs[start:end])
+            seq_obs = [_obs[start:end] for _obs in tensor_obs]
             values, _mem = self.critic.critic_pass(
                 seq_obs, _mem, sequence_length=self.policy.sequence_length
             )
@@ -135,7 +133,7 @@ class TorchOptimizer(Optimizer):
     def update_reward_signals(self, batch: AgentBuffer) -> Dict[str, float]:
         update_stats: Dict[str, float] = {}
         for reward_provider in self.reward_signals.values():
-            update_stats.update(reward_provider.update(batch))
+            update_stats |= reward_provider.update(batch)
         return update_stats
 
     def get_trajectory_value_estimates(

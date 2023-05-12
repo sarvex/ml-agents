@@ -125,9 +125,7 @@ class DiscriminatorNetwork(torch.nn.Module):
         """
         n_obs = len(self.encoder.processors)
         np_obs = ObsUtil.from_buffer(mini_batch, n_obs)
-        # Convert to tensors
-        tensor_obs = [ModelUtils.list_to_tensor(obs) for obs in np_obs]
-        return tensor_obs
+        return [ModelUtils.list_to_tensor(obs) for obs in np_obs]
 
     def compute_estimate(
         self, mini_batch: AgentBuffer, use_vail_noise: bool = False
@@ -256,5 +254,4 @@ class DiscriminatorNetwork(torch.nn.Module):
         gradient = torch.autograd.grad(estimate, encoder_input, create_graph=True)[0]
         # Norm's gradient could be NaN at 0. Use our own safe_norm
         safe_norm = (torch.sum(gradient**2, dim=1) + self.EPSILON).sqrt()
-        gradient_mag = torch.mean((safe_norm - 1) ** 2)
-        return gradient_mag
+        return torch.mean((safe_norm - 1) ** 2)

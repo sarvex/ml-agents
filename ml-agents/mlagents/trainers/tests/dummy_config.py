@@ -17,8 +17,12 @@ from mlagents.trainers.ppo.optimizer_torch import PPOSettings
 from mlagents.trainers.sac.optimizer_torch import SACSettings
 from mlagents.trainers.poca.optimizer_torch import POCASettings
 
-CONTINUOUS_DEMO_PATH = os.path.dirname(os.path.abspath(__file__)) + "/test.demo"
-DISCRETE_DEMO_PATH = os.path.dirname(os.path.abspath(__file__)) + "/testdcvis.demo"
+CONTINUOUS_DEMO_PATH = (
+    f"{os.path.dirname(os.path.abspath(__file__))}/test.demo"
+)
+DISCRETE_DEMO_PATH = (
+    f"{os.path.dirname(os.path.abspath(__file__))}/testdcvis.demo"
+)
 
 _PPO_CONFIG = TrainerSettings(
     trainer_type="ppo",

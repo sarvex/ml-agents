@@ -64,8 +64,6 @@ class MockCommunicator(Communicator):
         return UnityOutputProto(rl_initialization_output=rl_init, rl_output=output)
 
     def _get_agent_infos(self):
-        dict_agent_info = {}
-        list_agent_info = []
         vector_obs = [1, 2, 3]
 
         observations = [
@@ -83,20 +81,21 @@ class MockCommunicator(Communicator):
         )
         observations.append(vector_obs_proto)
 
-        for i in range(self.num_agents):
-            list_agent_info.append(
-                AgentInfoProto(
-                    reward=1,
-                    done=(i == 2),
-                    max_step_reached=False,
-                    id=i,
-                    observations=observations,
-                )
+        list_agent_info = [
+            AgentInfoProto(
+                reward=1,
+                done=(i == 2),
+                max_step_reached=False,
+                id=i,
+                observations=observations,
             )
-        dict_agent_info["RealFakeBrain"] = UnityRLOutputProto.ListAgentInfoProto(
-            value=list_agent_info
-        )
-        return dict_agent_info
+            for i in range(self.num_agents)
+        ]
+        return {
+            "RealFakeBrain": UnityRLOutputProto.ListAgentInfoProto(
+                value=list_agent_info
+            )
+        }
 
     def exchange(
         self, inputs: UnityInputProto, poll_callback: Optional[PollCallback] = None

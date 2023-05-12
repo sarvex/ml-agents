@@ -93,16 +93,18 @@ class HyperNetwork(torch.nn.Module):
         layer_in_size = hyper_input_size
         layers = []
         for _ in range(num_layers):
-            layers.append(
-                linear_layer(
-                    layer_in_size,
-                    layer_size,
-                    kernel_init=Initialization.KaimingHeNormal,
-                    kernel_gain=1.0,
-                    bias_init=Initialization.Zero,
+            layers.extend(
+                (
+                    linear_layer(
+                        layer_in_size,
+                        layer_size,
+                        kernel_init=Initialization.KaimingHeNormal,
+                        kernel_gain=1.0,
+                        bias_init=Initialization.Zero,
+                    ),
+                    Swish(),
                 )
             )
-            layers.append(Swish())
             layer_in_size = layer_size
         flat_output = linear_layer(
             layer_size,
@@ -126,8 +128,7 @@ class HyperNetwork(torch.nn.Module):
 
         output_weights = output_weights.view(-1, self.input_size, self.output_size)
 
-        result = (
+        return (
             torch.bmm(input_activation.unsqueeze(1), output_weights).squeeze(1)
             + self.bias
         )
-        return result

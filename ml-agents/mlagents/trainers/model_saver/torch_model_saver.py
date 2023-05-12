@@ -34,13 +34,11 @@ class TorchModelSaver(BaseModelSaver):
         self.modules: Dict[str, torch.nn.Modules] = {}
 
     def register(self, module: Union[TorchPolicy, TorchOptimizer]) -> None:
-        if isinstance(module, TorchPolicy) or isinstance(module, TorchOptimizer):
+        if isinstance(module, (TorchPolicy, TorchOptimizer)):
             self.modules.update(module.get_modules())  # type: ignore
         else:
             raise UnityPolicyException(
-                "Registering Object of unsupported type {} to ModelSaver ".format(
-                    type(module)
-                )
+                f"Registering Object of unsupported type {type(module)} to ModelSaver "
             )
         if self.policy is None and isinstance(module, TorchPolicy):
             self.policy = module
@@ -128,11 +126,7 @@ class TorchModelSaver(BaseModelSaver):
 
         if reset_global_steps:
             policy.set_step(0)
-            logger.info(
-                "Starting training from step 0 and saving to {}.".format(
-                    self.model_path
-                )
-            )
+            logger.info(f"Starting training from step 0 and saving to {self.model_path}.")
         else:
             logger.info(f"Resuming training from step {policy.get_current_step()}.")
 

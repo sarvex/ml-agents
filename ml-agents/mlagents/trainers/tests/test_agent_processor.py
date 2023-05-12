@@ -39,15 +39,16 @@ def _create_action_info(num_agents: int, agent_ids: List[str]) -> ActionInfo:
             continuous=np.array([[0.1]] * num_agents, dtype=np.float32)
         ),
     }
-    fake_action_info = ActionInfo(
-        action=ActionTuple(continuous=np.array([[0.1]] * num_agents, dtype=np.float32)),
+    return ActionInfo(
+        action=ActionTuple(
+            continuous=np.array([[0.1]] * num_agents, dtype=np.float32)
+        ),
         env_action=ActionTuple(
             continuous=np.array([[0.1]] * num_agents, dtype=np.float32)
         ),
         outputs=fake_action_outputs,
         agent_ids=agent_ids,
     )
-    return fake_action_info
 
 
 @pytest.mark.parametrize("num_vis_obs", [0, 1, 2], ids=["vec", "1 viz", "2 viz"])
@@ -182,7 +183,7 @@ def test_group_statuses():
 
     # Make sure trajectory has the right Groupmate Experiences.
     # THe first 3 steps should contain all of the obs (that 3rd step is also the terminal step of 2 of the agents)
-    for step in trajectory.steps[0:3]:
+    for step in trajectory.steps[:3]:
         assert len(step.group_status) == 3
     # After 2 agents has died, there should only be 1 group status.
     for step in trajectory.steps[3:]:

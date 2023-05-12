@@ -18,31 +18,24 @@ def validate_existing_directories(
     :param init_path: Path to run-id dir to initialize from
     """
 
-    output_path_exists = os.path.isdir(output_path)
-
-    if output_path_exists:
+    if output_path_exists := os.path.isdir(output_path):
         if not resume and not force:
             raise UnityTrainerException(
                 "Previous data from this run ID was found. "
                 "Either specify a new run ID, use --resume to resume this run, "
                 "or use the --force parameter to overwrite existing data."
             )
-    else:
-        if resume:
-            raise UnityTrainerException(
-                "Previous data from this run ID was not found. "
-                "Train a new run by removing the --resume flag."
-            )
+    elif resume:
+        raise UnityTrainerException(
+            "Previous data from this run ID was not found. "
+            "Train a new run by removing the --resume flag."
+        )
 
     # Verify init path if specified.
-    if init_path is not None:
-        if not os.path.isdir(init_path):
-            raise UnityTrainerException(
-                "Could not initialize from {}. "
-                "Make sure models have already been saved with that run ID.".format(
-                    init_path
-                )
-            )
+    if init_path is not None and not os.path.isdir(init_path):
+        raise UnityTrainerException(
+            f"Could not initialize from {init_path}. Make sure models have already been saved with that run ID."
+        )
 
 
 def setup_init_path(

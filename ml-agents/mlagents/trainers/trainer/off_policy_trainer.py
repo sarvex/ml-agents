@@ -118,9 +118,7 @@ class OffPolicyTrainer(RLTrainer):
         with open(filename, "rb+") as file_object:
             self.update_buffer.load_from_file(file_object)
         logger.debug(
-            "Experience replay buffer has {} experiences.".format(
-                self.update_buffer.num_experiences
-            )
+            f"Experience replay buffer has {self.update_buffer.num_experiences} experiences."
         )
 
     def _is_ready_update(self) -> bool:
@@ -143,9 +141,7 @@ class OffPolicyTrainer(RLTrainer):
                     "Replay buffer was unable to load, starting from scratch."
                 )
             logger.debug(
-                "Loaded update buffer with {} sequences".format(
-                    self.update_buffer.num_experiences
-                )
+                f"Loaded update buffer with {self.update_buffer.num_experiences} sequences"
             )
 
     def add_policy(

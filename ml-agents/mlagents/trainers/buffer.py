@@ -173,16 +173,15 @@ class AgentBufferField(list):
                     "The batch size and training length requested for get_batch where"
                     " too large given the current number of data points."
                 )
-            if batch_size * training_length > len(self):
-                if self.contains_lists:
-                    padding = []
-                else:
-                    # We want to duplicate the last value in the array, multiplied by the padding_value.
-                    padding = np.array(self[-1], dtype=np.float32) * self.padding_value
-                return self[:] + [padding] * (training_length - leftover)
-
-            else:
+            if batch_size * training_length <= len(self):
                 return self[len(self) - batch_size * training_length :]
+            padding = (
+                []
+                if self.contains_lists
+                else np.array(self[-1], dtype=np.float32) * self.padding_value
+            )
+            return self[:] + [padding] * (training_length - leftover)
+
         else:
             # The sequences will have overlapping elements
             if batch_size is None:
@@ -224,25 +223,17 @@ class AgentBufferField(list):
         if len(self) > 0 and not isinstance(self[0], list):
             return np.asanyarray(self, dtype=dtype)
 
-        shape = None
-        for _entry in self:
-            # _entry could be an empty list if there are no group agents in this
-            # step. Find the first non-empty list and use that shape.
-            if _entry:
-                shape = _entry[0].shape
-                break
+        shape = next((_entry[0].shape for _entry in self if _entry), None)
         # If there were no groupmate agents in the entire batch, return an empty List.
         if shape is None:
             return []
 
-        # Convert to numpy array while padding with 0's
-        new_list = list(
+        return list(
             map(
                 lambda x: np.asanyarray(x, dtype=dtype),
                 itertools.zip_longest(*self, fillvalue=np.full(shape, pad_value)),
             )
         )
-        return new_list
 
     def to_ndarray(self):
         """
@@ -515,7 +506,4 @@ class AgentBuffer(MutableMapping):
         Note that these all have to be the same length, otherwise shuffle and append_to_update_buffer
         will fail.
         """
-        if self.values():
-            return len(next(iter(self.values())))
-        else:
-            return 0
+        return len(next(iter(self.values()))) if self.values() else 0

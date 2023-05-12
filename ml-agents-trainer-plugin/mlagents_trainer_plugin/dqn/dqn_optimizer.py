@@ -99,12 +99,12 @@ class DQNOptimizer(TorchOptimizer):
         decay_lr = self.decay_learning_rate.get_value(self.policy.get_current_step())
         exp_rate = self.decay_exploration_rate.get_value(self.policy.get_current_step())
         self.policy.actor.exploration_rate = exp_rate
-        rewards = {}
-        for name in self.reward_signals:
-            rewards[name] = ModelUtils.list_to_tensor(
+        rewards = {
+            name: ModelUtils.list_to_tensor(
                 batch[RewardSignalUtil.rewards_key(name)]
             )
-
+            for name in self.reward_signals
+        }
         n_obs = len(self.policy.behavior_spec.observation_specs)
         current_obs = ObsUtil.from_buffer(batch, n_obs)
         # Convert to tensors
@@ -158,7 +158,7 @@ class DQNOptimizer(TorchOptimizer):
         }
 
         for reward_provider in self.reward_signals.values():
-            update_stats.update(reward_provider.update(batch))
+            update_stats |= reward_provider.update(batch)
         return update_stats
 
     def get_modules(self):
@@ -167,7 +167,7 @@ class DQNOptimizer(TorchOptimizer):
             "Optimizer:critic": self.critic,
         }
         for reward_provider in self.reward_signals.values():
-            modules.update(reward_provider.get_modules())
+            modules |= reward_provider.get_modules()
         return modules
 
 
@@ -259,10 +259,9 @@ class QNetwork(nn.Module, Actor, Critic):
         return tuple(export_out)
 
     def get_random_action(self, inputs) -> torch.Tensor:
-        action_out = torch.randint(
+        return torch.randint(
             0, self.action_spec.discrete_branches[0], (len(inputs), 1)
         )
-        return action_out
 
     @staticmethod
     def get_greedy_action(q_values) -> torch.Tensor:
@@ -277,14 +276,11 @@ class QNetwork(nn.Module, Actor, Critic):
         sequence_length: int = 1,
         deterministic=False,
     ) -> Tuple[AgentAction, Dict[str, Any], torch.Tensor]:
-        run_out = {}
         if not deterministic and np.random.rand() < self.exploration_rate:
             action_out = self.get_random_action(inputs)
-            action_out = AgentAction(None, [action_out])
-            run_out["env_action"] = action_out.to_action_tuple()
         else:
             out_vals, _ = self.critic_pass(inputs, memories, sequence_length)
             action_out = self.get_greedy_action(out_vals)
-            action_out = AgentAction(None, [action_out])
-            run_out["env_action"] = action_out.to_action_tuple()
+        action_out = AgentAction(None, [action_out])
+        run_out = {"env_action": action_out.to_action_tuple()}
         return action_out, run_out, torch.Tensor([])

@@ -47,8 +47,7 @@ def create_sac_optimizer_mock(dummy_config, use_rnn, use_discrete, use_visual):
     policy = TorchPolicy(
         0, mock_brain, trainer_settings.network_settings, SimpleActor, actor_kwargs
     )
-    optimizer = TorchSACOptimizer(policy, trainer_settings)
-    return optimizer
+    return TorchSACOptimizer(policy, trainer_settings)
 
 
 @pytest.mark.parametrize("discrete", [True, False], ids=["discrete", "continuous"])

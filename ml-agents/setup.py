@@ -25,9 +25,7 @@ class VerifyVersionCommand(install):
         tag = os.getenv("GITHUB_REF", "NO GITHUB TAG!").replace("refs/tags/", "")
 
         if tag != EXPECTED_TAG:
-            info = "Git tag: {} does not match the expected tag of this app: {}".format(
-                tag, EXPECTED_TAG
-            )
+            info = f"Git tag: {tag} does not match the expected tag of this app: {EXPECTED_TAG}"
             sys.exit(info)
 
 

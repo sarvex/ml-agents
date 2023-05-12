@@ -64,10 +64,7 @@ class IncomingMessage:
             return [] if default_value is None else default_value
 
         list_len = self.read_int32()
-        output = []
-        for _ in range(list_len):
-            output.append(self.read_float32())
-        return output
+        return [self.read_float32() for _ in range(list_len)]
 
     def read_string(self, default_value: str = "") -> str:
         """

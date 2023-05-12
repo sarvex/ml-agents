@@ -88,11 +88,10 @@ class ActionModel(nn.Module):
                 continuous_action = dists.continuous.sample()
         if dists.discrete is not None:
             discrete_action = []
-            if self._deterministic:
-                for discrete_dist in dists.discrete:
+            for discrete_dist in dists.discrete:
+                if self._deterministic:
                     discrete_action.append(discrete_dist.deterministic_sample())
-            else:
-                for discrete_dist in dists.discrete:
+                else:
                     discrete_action.append(discrete_dist.sample())
         return AgentAction(continuous_action, discrete_action)
 

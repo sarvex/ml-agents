@@ -106,9 +106,7 @@ def test_message_bool():
         msg_out.write_bool(v)
 
     msg_in = IncomingMessage(msg_out.buffer)
-    read_vals = []
-    for _ in range(len(vals)):
-        read_vals.append(msg_in.read_bool())
+    read_vals = [msg_in.read_bool() for _ in vals]
     assert vals == read_vals
 
     # Test reading with defaults
@@ -223,7 +221,7 @@ def test_environment_parameters():
     value = message.read_float32()
     assert key == "param-1"
     assert dtype == EnvironmentParametersChannel.EnvironmentDataTypes.FLOAT
-    assert value - 0.1 < 1e-8
+    assert value < 0.10000001
 
     sender.set_float_parameter("param-1", 0.1)
     sender.set_float_parameter("param-2", 0.1)
@@ -254,5 +252,5 @@ def test_stats_channel():
 
     assert len(stats) == 1
     val, method = stats["stats-1"][0]
-    assert val - 42.0 < 1e-8
+    assert val < 42.00000001
     assert method == StatsAggregationMethod.MOST_RECENT

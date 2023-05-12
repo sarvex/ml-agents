@@ -150,11 +150,10 @@ class AgentProcessor:
         for _gid in action_global_agent_ids:
             # If the ID doesn't have a last step result, the agent just reset,
             # don't store the action.
-            if _gid in self._last_step_result:
-                if "action" in take_action_outputs:
-                    self.policy.save_previous_action(
-                        [_gid], take_action_outputs["action"]
-                    )
+            if _gid in self._last_step_result and "action" in take_action_outputs:
+                self.policy.save_previous_action(
+                    [_gid], take_action_outputs["action"]
+                )
 
     def _add_group_status_and_obs(
         self, step: Union[TerminalStep, DecisionStep], worker_id: int
@@ -176,24 +175,25 @@ class AgentProcessor:
         stored_take_action_outputs = self._last_take_action_outputs.get(
             global_agent_id, None
         )
-        if stored_decision_step is not None and stored_take_action_outputs is not None:
-            # 0, the default group_id, means that the agent doesn't belong to an agent group.
-            # If 0, don't add any groupmate information.
-            if step.group_id > 0:
-                global_group_id = get_global_group_id(worker_id, step.group_id)
-                stored_actions = stored_take_action_outputs["action"]
-                action_tuple = ActionTuple(
-                    continuous=stored_actions.continuous[idx],
-                    discrete=stored_actions.discrete[idx],
-                )
-                group_status = AgentStatus(
-                    obs=stored_decision_step.obs,
-                    reward=step.reward,
-                    action=action_tuple,
-                    done=isinstance(step, TerminalStep),
-                )
-                self._group_status[global_group_id][global_agent_id] = group_status
-                self._current_group_obs[global_group_id][global_agent_id] = step.obs
+        if (
+            stored_decision_step is not None
+            and stored_take_action_outputs is not None
+            and step.group_id > 0
+        ):
+            global_group_id = get_global_group_id(worker_id, step.group_id)
+            stored_actions = stored_take_action_outputs["action"]
+            action_tuple = ActionTuple(
+                continuous=stored_actions.continuous[idx],
+                discrete=stored_actions.discrete[idx],
+            )
+            group_status = AgentStatus(
+                obs=stored_decision_step.obs,
+                reward=step.reward,
+                action=action_tuple,
+                done=isinstance(step, TerminalStep),
+            )
+            self._group_status[global_group_id][global_agent_id] = group_status
+            self._current_group_obs[global_group_id][global_agent_id] = step.obs
 
     def _clear_group_status_and_obs(self, global_id: GlobalAgentId) -> None:
         """
@@ -232,7 +232,6 @@ class AgentProcessor:
                 memory = self.policy.retrieve_previous_memories([global_agent_id])[0, :]
             else:
                 memory = None
-            done = terminated  # Since this is an ongoing step
             interrupted = step.interrupted if terminated else False
             # Add the outputs of the last eval
             stored_actions = stored_take_action_outputs["action"]
@@ -254,12 +253,14 @@ class AgentProcessor:
             action_mask = stored_decision_step.action_mask
             prev_action = self.policy.retrieve_previous_action([global_agent_id])[0, :]
 
-            # Assemble teammate_obs. If none saved, then it will be an empty list.
-            group_statuses = []
-            for _id, _mate_status in self._group_status[global_group_id].items():
-                if _id != global_agent_id:
-                    group_statuses.append(_mate_status)
-
+            group_statuses = [
+                _mate_status
+                for _id, _mate_status in self._group_status[
+                    global_group_id
+                ].items()
+                if _id != global_agent_id
+            ]
+            done = terminated
             experience = AgentExperience(
                 obs=obs,
                 reward=step.reward,
@@ -276,21 +277,22 @@ class AgentProcessor:
             # Add the value outputs if needed
             self._experience_buffers[global_agent_id].append(experience)
             self._episode_rewards[global_agent_id] += step.reward
-            if not terminated:
+            if not done:
                 self._episode_steps[global_agent_id] += 1
 
-            # Add a trajectory segment to the buffer if terminal or the length has reached the time horizon
             if (
                 len(self._experience_buffers[global_agent_id])
                 >= self._max_trajectory_length
-                or terminated
+                or done
             ):
                 next_obs = step.obs
-                next_group_obs = []
-                for _id, _obs in self._current_group_obs[global_group_id].items():
-                    if _id != global_agent_id:
-                        next_group_obs.append(_obs)
-
+                next_group_obs = [
+                    _obs
+                    for _id, _obs in self._current_group_obs[
+                        global_group_id
+                    ].items()
+                    if _id != global_agent_id
+                ]
                 trajectory = Trajectory(
                     steps=self._experience_buffers[global_agent_id],
                     agent_id=global_agent_id,
@@ -301,7 +303,7 @@ class AgentProcessor:
                 for traj_queue in self._trajectory_queues:
                     traj_queue.put(trajectory)
                 self._experience_buffers[global_agent_id] = []
-            if terminated:
+            if done:
                 # Record episode length.
                 self._stats_reporter.add_stat(
                     "Environment/Episode Length",
@@ -452,17 +454,27 @@ class AgentManager(AgentProcessor):
         """
         for stat_name, value_list in env_stats.items():
             for val, agg_type in value_list:
-                if agg_type == StatsAggregationMethod.AVERAGE:
+                if (
+                    agg_type != StatsAggregationMethod.AVERAGE
+                    and agg_type != StatsAggregationMethod.SUM
+                    and agg_type != StatsAggregationMethod.HISTOGRAM
+                    and agg_type == StatsAggregationMethod.MOST_RECENT
+                    and worker_id == 0
+                ):
+                    self._stats_reporter.set_stat(stat_name, val)
+                elif (
+                    agg_type != StatsAggregationMethod.AVERAGE
+                    and agg_type != StatsAggregationMethod.SUM
+                    and agg_type != StatsAggregationMethod.HISTOGRAM
+                    and agg_type == StatsAggregationMethod.MOST_RECENT
+                ):
+                    pass
+                elif agg_type in [
+                    StatsAggregationMethod.AVERAGE,
+                    StatsAggregationMethod.SUM,
+                    StatsAggregationMethod.HISTOGRAM,
+                ]:
                     self._stats_reporter.add_stat(stat_name, val, agg_type)
-                elif agg_type == StatsAggregationMethod.SUM:
-                    self._stats_reporter.add_stat(stat_name, val, agg_type)
-                elif agg_type == StatsAggregationMethod.HISTOGRAM:
-                    self._stats_reporter.add_stat(stat_name, val, agg_type)
-                elif agg_type == StatsAggregationMethod.MOST_RECENT:
-                    # In order to prevent conflicts between multiple environments,
-                    # only stats from the first environment are recorded.
-                    if worker_id == 0:
-                        self._stats_reporter.set_stat(stat_name, val)
                 else:
                     raise UnityTrainerException(
                         f"Unknown StatsAggregationMethod encountered. {agg_type}"

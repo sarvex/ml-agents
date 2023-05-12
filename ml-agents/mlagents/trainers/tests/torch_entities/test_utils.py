@@ -66,11 +66,8 @@ def test_invalid_visual_input_size(encoder_type):
 def test_create_inputs(encoder_type, normalize, num_vector, num_visual):
     vec_obs_shape = (5,)
     vis_obs_shape = (84, 84, 3)
-    obs_shapes = []
-    for _ in range(num_vector):
-        obs_shapes.append(vec_obs_shape)
-    for _ in range(num_visual):
-        obs_shapes.append(vis_obs_shape)
+    obs_shapes = [vec_obs_shape for _ in range(num_vector)]
+    obs_shapes.extend(vis_obs_shape for _ in range(num_visual))
     h_size = 128
     obs_spec = create_observation_specs_with_shapes(obs_shapes)
     encoders, embedding_sizes = ModelUtils.create_input_processors(

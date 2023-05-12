@@ -22,9 +22,9 @@ class SideChannelManager:
                 channel_id = uuid.UUID(bytes_le=bytes(data[offset : offset + 16]))
                 offset += 16
                 (message_len,) = struct.unpack_from("<i", data, offset)
-                offset = offset + 4
+                offset += 4
                 message_data = data[offset : offset + message_len]
-                offset = offset + message_len
+                offset += message_len
             except (struct.error, ValueError, IndexError):
                 raise UnityEnvironmentException(
                     "There was a problem reading a message in a SideChannel. "
@@ -33,9 +33,7 @@ class SideChannelManager:
                 )
             if len(message_data) != message_len:
                 raise UnityEnvironmentException(
-                    "The message received by the side channel {} was "
-                    "unexpectedly short. Make sure your Unity Environment "
-                    "sending side channel data properly.".format(channel_id)
+                    f"The message received by the side channel {channel_id} was unexpectedly short. Make sure your Unity Environment sending side channel data properly."
                 )
             if channel_id in self._side_channels_dict:
                 incoming_message = IncomingMessage(message_data)

@@ -111,12 +111,12 @@ class ObservationEncoder(nn.Module):
                 encodes.append(processed_obs)
             else:
                 var_len_processor_inputs.append((processor, inputs[idx]))
-        if len(encodes) != 0:
+        if encodes:
             encoded_self = torch.cat(encodes, dim=1)
             input_exist = True
         else:
             input_exist = False
-        if len(var_len_processor_inputs) > 0 and self.rsa is not None:
+        if var_len_processor_inputs and self.rsa is not None:
             # Some inputs need to be processed with a variable length encoder
             masks = get_zero_entities_mask([p_i[1] for p_i in var_len_processor_inputs])
             embeddings: List[torch.Tensor] = []
@@ -125,8 +125,10 @@ class ObservationEncoder(nn.Module):
                 if input_exist and self.x_self_encoder is not None
                 else None
             )
-            for processor, var_len_input in var_len_processor_inputs:
-                embeddings.append(processor(processed_self, var_len_input))
+            embeddings.extend(
+                processor(processed_self, var_len_input)
+                for processor, var_len_input in var_len_processor_inputs
+            )
             qkv = torch.cat(embeddings, dim=1)
             attention_embedding = self.rsa(qkv, masks)
             if not input_exist:
@@ -161,7 +163,7 @@ class ObservationEncoder(nn.Module):
                     "The one of the goals uses variable length observations. This use "
                     "case is not supported."
                 )
-        if len(encodes) != 0:
+        if encodes:
             encoded = torch.cat(encodes, dim=1)
         else:
             raise UnityTrainerException(
@@ -212,10 +214,7 @@ class NetworkBody(nn.Module):
                 total_enc_size, network_settings.num_layers, self.h_size
             )
 
-        if self.use_lstm:
-            self.lstm = LSTM(self.h_size, self.m_size)
-        else:
-            self.lstm = None  # type: ignore
+        self.lstm = LSTM(self.h_size, self.m_size) if self.use_lstm else None
 
     def update_normalization(self, buffer: AgentBuffer) -> None:
         self.observation_encoder.update_normalization(buffer)
@@ -307,10 +306,7 @@ class MultiAgentNetworkBody(torch.nn.Module):
             kernel_gain=(0.125 / self.h_size) ** 0.5,
         )
 
-        if self.use_lstm:
-            self.lstm = LSTM(self.h_size, self.m_size)
-        else:
-            self.lstm = None  # type: ignore
+        self.lstm = LSTM(self.h_size, self.m_size) if self.use_lstm else None
         self._current_max_agents = torch.nn.Parameter(
             torch.as_tensor(1), requires_grad=False
         )
@@ -336,9 +332,7 @@ class MultiAgentNetworkBody(torch.nn.Module):
         only_first_obs_flat = torch.stack(
             [_obs.flatten(start_dim=1)[:, 0] for _obs in only_first_obs], dim=1
         )
-        # Get the mask from NaNs
-        attn_mask = only_first_obs_flat.isnan().float()
-        return attn_mask
+        return only_first_obs_flat.isnan().float()
 
     def _copy_and_remove_nans_from_obs(
         self, all_obs: List[List[torch.Tensor]], attention_mask: torch.Tensor
@@ -638,12 +632,11 @@ class SimpleActor(nn.Module, Actor):
             inputs, memories=memories, sequence_length=sequence_length
         )
         action, log_probs, entropies = self.action_model(encoding, masks)
-        run_out = {}
-        # This is the clipped action which is not saved to the buffer
-        # but is exclusively sent to the environment.
-        run_out["env_action"] = action.to_action_tuple(
-            clip=self.action_model.clip_action
-        )
+        run_out = {
+            "env_action": action.to_action_tuple(
+                clip=self.action_model.clip_action
+            )
+        }
         run_out["log_probs"] = log_probs
         run_out["entropy"] = entropies
 
@@ -662,10 +655,7 @@ class SimpleActor(nn.Module, Actor):
         )
 
         log_probs, entropies = self.action_model.evaluate(encoding, masks, actions)
-        run_out = {}
-        run_out["log_probs"] = log_probs
-        run_out["entropy"] = entropies
-        return run_out
+        return {"log_probs": log_probs, "entropy": entropies}
 
     def forward(
         self,

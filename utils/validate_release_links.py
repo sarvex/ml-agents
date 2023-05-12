@@ -91,8 +91,7 @@ def update_pip_install_line(line, package_verion):
         replacement_version = (
             f"python -m pip install {quiet_option}{package_name}=={package_verion}"
         )
-        updated = PIP_INSTALL_PATTERN.sub(replacement_version, line)
-        return updated
+        return PIP_INSTALL_PATTERN.sub(replacement_version, line)
     else:  # Don't do anything
         return line
 
@@ -191,10 +190,9 @@ def check_file(
                         new_line = re.sub(r"release_[0-9]+", rf"{release_tag}", line)
                         new_line = update_pip_install_line(new_line, package_version)
                         new_file.write(new_line)
-        if bad_lines:
-            if os.path.exists(filename):
-                os.remove(filename)
-                os.rename(new_file_name, filename)
+        if bad_lines and os.path.exists(filename):
+            os.remove(filename)
+            os.rename(new_file_name, filename)
 
     return bad_lines
 

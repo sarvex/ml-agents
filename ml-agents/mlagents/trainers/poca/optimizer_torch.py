@@ -220,7 +220,7 @@ class TorchPOCAOptimizer(TorchOptimizer):
         GAIL, and make sure Extrinsic adds team rewards.
         :param reward_signal_configs: Reward signal config.
         """
-        for reward_signal in reward_signal_configs.keys():
+        for reward_signal in reward_signal_configs:
             if reward_signal != RewardSignalType.EXTRINSIC:
                 logger.warning(
                     f"Reward signal {reward_signal.value.capitalize()} is not supported with the POCA trainer; "
@@ -281,7 +281,7 @@ class TorchPOCAOptimizer(TorchOptimizer):
             ModelUtils.list_to_tensor(batch[BufferKey.MEMORY][i])
             for i in range(0, len(batch[BufferKey.MEMORY]), self.policy.sequence_length)
         ]
-        if len(memories) > 0:
+        if memories:
             memories = torch.stack(memories).unsqueeze(0)
         value_memories = [
             ModelUtils.list_to_tensor(batch[BufferKey.CRITIC_MEMORY][i])
@@ -297,7 +297,7 @@ class TorchPOCAOptimizer(TorchOptimizer):
             )
         ]
 
-        if len(value_memories) > 0:
+        if value_memories:
             value_memories = torch.stack(value_memories).unsqueeze(0)
             baseline_memories = torch.stack(baseline_memories).unsqueeze(0)
 
@@ -355,7 +355,7 @@ class TorchPOCAOptimizer(TorchOptimizer):
         loss.backward()
 
         self.optimizer.step()
-        update_stats = {
+        return {
             # NOTE: abs() is not technically correct, but matches the behavior in TensorFlow.
             # TODO: After PyTorch is default, change to something more correct.
             "Losses/Policy Loss": torch.abs(policy_loss).item(),
@@ -366,12 +366,10 @@ class TorchPOCAOptimizer(TorchOptimizer):
             "Policy/Beta": decay_bet,
         }
 
-        return update_stats
-
     def get_modules(self):
         modules = {"Optimizer:adam": self.optimizer, "Optimizer:critic": self._critic}
         for reward_provider in self.reward_signals.values():
-            modules.update(reward_provider.get_modules())
+            modules |= reward_provider.get_modules()
         return modules
 
     def _evaluate_by_sequence_team(
@@ -427,14 +425,10 @@ class TorchPOCAOptimizer(TorchOptimizer):
             start = seq_num * self.policy.sequence_length
             end = (seq_num + 1) * self.policy.sequence_length
 
-            self_seq_obs = []
             groupmate_seq_obs = []
             groupmate_seq_act = []
-            seq_obs = []
-            for _self_obs in self_obs:
-                seq_obs.append(_self_obs[start:end])
-            self_seq_obs.append(seq_obs)
-
+            seq_obs = [_self_obs[start:end] for _self_obs in self_obs]
+            self_seq_obs = [seq_obs]
             for groupmate_obs, groupmate_action in zip(obs, actions):
                 seq_obs = []
                 for _obs in groupmate_obs:
@@ -463,15 +457,13 @@ class TorchPOCAOptimizer(TorchOptimizer):
 
         # Compute values for the potentially truncated initial sequence
         if leftover_seq_len > 0:
-            self_seq_obs = []
             groupmate_seq_obs = []
             groupmate_seq_act = []
             seq_obs = []
             for _self_obs in self_obs:
                 last_seq_obs = _self_obs[-leftover_seq_len:]
                 seq_obs.append(last_seq_obs)
-            self_seq_obs.append(seq_obs)
-
+            self_seq_obs = [seq_obs]
             for groupmate_obs, groupmate_action in zip(obs, actions):
                 seq_obs = []
                 for _obs in groupmate_obs:

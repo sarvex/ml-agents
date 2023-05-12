@@ -110,7 +110,6 @@ class UnityEnvWorker:
             logger.debug(
                 f"UnityEnvWorker {self.worker_id} got exception trying to close."
             )
-            pass
 
 
 def worker(
@@ -358,19 +357,21 @@ class SubprocessEnvManager(EnvManager):
         If the restart limit is exceeded it will raise a UnityCommunicationException.
         If the exception is not recoverable it re-raises the exception.
         """
-        if (
-            isinstance(exception, UnityCommunicationException)
-            or isinstance(exception, UnityTimeOutException)
-            or isinstance(exception, UnityEnvironmentException)
-            or isinstance(exception, UnityCommunicatorStoppedException)
+        if isinstance(
+            exception,
+            (
+                UnityCommunicationException,
+                UnityTimeOutException,
+                UnityEnvironmentException,
+                UnityCommunicatorStoppedException,
+            ),
         ):
             if self._worker_has_restart_quota(worker_id):
                 return
-            else:
-                logger.error(
-                    f"Worker {worker_id} exceeded the allowed number of restarts."
-                )
-                raise exception
+            logger.error(
+                f"Worker {worker_id} exceeded the allowed number of restarts."
+            )
+            raise exception
         raise exception
 
     def _worker_has_restart_quota(self, worker_id: int) -> bool:
@@ -411,7 +412,7 @@ class SubprocessEnvManager(EnvManager):
         step_workers: Set[int] = set()
         # Poll the step queue for completed steps from environment workers until we retrieve
         # 1 or more, which we will then return as StepInfos
-        while len(worker_steps) < 1:
+        while not worker_steps:
             try:
                 while True:
                     step: EnvironmentResponse = self.step_queue.get_nowait()
@@ -428,8 +429,7 @@ class SubprocessEnvManager(EnvManager):
                         step_workers.add(step.worker_id)
             except EmptyQueueException:
                 pass
-        step_infos = self._postprocess_steps(worker_steps)
-        return step_infos
+        return self._postprocess_steps(worker_steps)
 
     def _reset_env(self, config: Optional[Dict] = None) -> List[EnvironmentStep]:
         while any(ew.waiting for ew in self.env_workers):
@@ -475,7 +475,7 @@ class SubprocessEnvManager(EnvManager):
         result: Dict[BehaviorName, BehaviorSpec] = {}
         for worker in self.env_workers:
             worker.send(EnvironmentCommand.BEHAVIOR_SPECS)
-            result.update(worker.recv().payload)
+            result |= worker.recv().payload
         return result
 
     def close(self) -> None:
@@ -537,10 +537,11 @@ class SubprocessEnvManager(EnvManager):
 
     @timed
     def _take_step(self, last_step: EnvironmentStep) -> Dict[BehaviorName, ActionInfo]:
-        all_action_info: Dict[str, ActionInfo] = {}
-        for brain_name, step_tuple in last_step.current_all_step_result.items():
-            if brain_name in self.policies:
-                all_action_info[brain_name] = self.policies[brain_name].get_action(
-                    step_tuple[0], last_step.worker_id
-                )
+        all_action_info: Dict[str, ActionInfo] = {
+            brain_name: self.policies[brain_name].get_action(
+                step_tuple[0], last_step.worker_id
+            )
+            for brain_name, step_tuple in last_step.current_all_step_result.items()
+            if brain_name in self.policies
+        }
         return all_action_info

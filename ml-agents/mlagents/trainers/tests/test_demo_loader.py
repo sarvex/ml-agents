@@ -27,12 +27,12 @@ BEHAVIOR_SPEC = create_mock_3dball_behavior_specs()
 def test_load_demo():
     path_prefix = os.path.dirname(os.path.abspath(__file__))
     behavior_spec, pair_infos, total_expected = load_demonstration(
-        path_prefix + "/test.demo"
+        f"{path_prefix}/test.demo"
     )
     assert np.sum(behavior_spec.observation_specs[0].shape) == 8
     assert len(pair_infos) == total_expected
 
-    _, demo_buffer = demo_to_buffer(path_prefix + "/test.demo", 1, BEHAVIOR_SPEC)
+    _, demo_buffer = demo_to_buffer(f"{path_prefix}/test.demo", 1, BEHAVIOR_SPEC)
     assert (
         len(demo_buffer[BufferKey.CONTINUOUS_ACTION]) == total_expected - 1
         or len(demo_buffer[BufferKey.DISCRETE_ACTION]) == total_expected - 1
@@ -42,12 +42,14 @@ def test_load_demo():
 def test_load_demo_dir():
     path_prefix = os.path.dirname(os.path.abspath(__file__))
     behavior_spec, pair_infos, total_expected = load_demonstration(
-        path_prefix + "/test_demo_dir"
+        f"{path_prefix}/test_demo_dir"
     )
     assert np.sum(behavior_spec.observation_specs[0].shape) == 8
     assert len(pair_infos) == total_expected
 
-    _, demo_buffer = demo_to_buffer(path_prefix + "/test_demo_dir", 1, BEHAVIOR_SPEC)
+    _, demo_buffer = demo_to_buffer(
+        f"{path_prefix}/test_demo_dir", 1, BEHAVIOR_SPEC
+    )
     assert (
         len(demo_buffer[BufferKey.CONTINUOUS_ACTION]) == total_expected - 1
         or len(demo_buffer[BufferKey.DISCRETE_ACTION]) == total_expected - 1
@@ -61,20 +63,20 @@ def test_demo_mismatch():
         mismatch_obs = setup_test_behavior_specs(
             False, False, vector_action_space=2, vector_obs_space=9
         )
-        _, demo_buffer = demo_to_buffer(path_prefix + "/test.demo", 1, mismatch_obs)
+        _, demo_buffer = demo_to_buffer(f"{path_prefix}/test.demo", 1, mismatch_obs)
     # action mismatch
     with pytest.raises(RuntimeError):
         mismatch_act = setup_test_behavior_specs(
             False, False, vector_action_space=3, vector_obs_space=9
         )
-        _, demo_buffer = demo_to_buffer(path_prefix + "/test.demo", 1, mismatch_act)
+        _, demo_buffer = demo_to_buffer(f"{path_prefix}/test.demo", 1, mismatch_act)
     # action type mismatch
     with pytest.raises(RuntimeError):
         mismatch_act_type = setup_test_behavior_specs(
             True, False, vector_action_space=[2], vector_obs_space=9
         )
         _, demo_buffer = demo_to_buffer(
-            path_prefix + "/test.demo", 1, mismatch_act_type
+            f"{path_prefix}/test.demo", 1, mismatch_act_type
         )
     # number obs mismatch
     with pytest.raises(RuntimeError):
@@ -82,7 +84,7 @@ def test_demo_mismatch():
             False, True, vector_action_space=2, vector_obs_space=9
         )
         _, demo_buffer = demo_to_buffer(
-            path_prefix + "/test.demo", 1, mismatch_obs_number
+            f"{path_prefix}/test.demo", 1, mismatch_obs_number
         )
 
 

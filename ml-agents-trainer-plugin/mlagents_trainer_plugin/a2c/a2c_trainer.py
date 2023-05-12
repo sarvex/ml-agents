@@ -187,16 +187,15 @@ class A2CTrainer(OnPolicyTrainer):
                 key.value for key, _ in reward_signal_configs.items()
             ]
             actor_cls = SharedActorCritic
-            actor_kwargs.update({"stream_names": reward_signal_names})
+            actor_kwargs["stream_names"] = reward_signal_names
 
-        policy = TorchPolicy(
+        return TorchPolicy(
             self.seed,
             behavior_spec,
             self.trainer_settings.network_settings,
             actor_cls,
             actor_kwargs,
         )
-        return policy
 
     @staticmethod
     def get_settings_type():

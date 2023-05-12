@@ -33,21 +33,19 @@ def behavior_spec_from_proto(
     :param agent_info: protobuf object.
     :return: BehaviorSpec object.
     """
-    observation_specs = []
-    for obs in agent_info.observations:
-        observation_specs.append(
-            ObservationSpec(
-                name=obs.name,
-                shape=tuple(obs.shape),
-                observation_type=ObservationType(obs.observation_type),
-                dimension_property=tuple(
-                    DimensionProperty(dim) for dim in obs.dimension_properties
-                )
-                if len(obs.dimension_properties) > 0
-                else (DimensionProperty.UNSPECIFIED,) * len(obs.shape),
+    observation_specs = [
+        ObservationSpec(
+            name=obs.name,
+            shape=tuple(obs.shape),
+            observation_type=ObservationType(obs.observation_type),
+            dimension_property=tuple(
+                DimensionProperty(dim) for dim in obs.dimension_properties
             )
+            if len(obs.dimension_properties) > 0
+            else (DimensionProperty.UNSPECIFIED,) * len(obs.shape),
         )
-
+        for obs in agent_info.observations
+    ]
     # proto from communicator < v1.3 does not set action spec, use deprecated fields instead
     if (
         brain_param_proto.action_spec.num_continuous_actions == 0
@@ -65,7 +63,7 @@ def behavior_spec_from_proto(
         action_spec_proto = brain_param_proto.action_spec
         action_spec = ActionSpec(
             action_spec_proto.num_continuous_actions,
-            tuple(branch for branch in action_spec_proto.discrete_branch_sizes),
+            tuple(action_spec_proto.discrete_branch_sizes),
         )
     return BehaviorSpec(observation_specs, action_spec)
 
@@ -167,8 +165,7 @@ def _process_images_mapping(image_arrays, mappings):
 
     for i, img_array in enumerate(processed_image_arrays):
         processed_image_arrays[i] = np.mean(img_array, axis=0)
-    img = np.stack(processed_image_arrays, axis=2)
-    return img
+    return np.stack(processed_image_arrays, axis=2)
 
 
 def _process_images_num_channels(image_arrays, expected_channels):
@@ -220,16 +217,14 @@ def _observation_to_np_array(
     :param expected_shape: optional shape information, used for sanity checks.
     :return: processed numpy array of observation from environment
     """
-    if expected_shape is not None:
-        if list(obs.shape) != list(expected_shape):
-            raise UnityObservationException(
-                f"Observation did not have the expected shape - got {obs.shape} but expected {expected_shape}"
-            )
+    if expected_shape is not None and list(obs.shape) != list(expected_shape):
+        raise UnityObservationException(
+            f"Observation did not have the expected shape - got {obs.shape} but expected {expected_shape}"
+        )
     expected_channels = obs.shape[2]
     if obs.compression_type == COMPRESSION_TYPE_NONE:
         img = np.array(obs.float_data.data, dtype=np.float32)
         img = np.reshape(img, obs.shape)
-        return img
     else:
         img = process_pixels(
             obs.compressed_data, expected_channels, list(obs.compressed_channel_mapping)
@@ -240,7 +235,8 @@ def _observation_to_np_array(
                 f"Decompressed observation did not have the expected shape - "
                 f"decompressed had {img.shape} but expected {obs.shape}"
             )
-        return img
+
+    return img
 
 
 @timed
@@ -382,26 +378,26 @@ def steps_from_proto(
         [agent_info.id for agent_info in terminal_agent_info_list], dtype=np.int32
     )
     action_mask = None
-    if behavior_spec.action_spec.discrete_size > 0:
-        if any(
-            [agent_info.action_mask is not None]
-            for agent_info in decision_agent_info_list
-        ):
-            n_agents = len(decision_agent_info_list)
-            a_size = np.sum(behavior_spec.action_spec.discrete_branches)
-            mask_matrix = np.ones((n_agents, a_size), dtype=bool)
-            for agent_index, agent_info in enumerate(decision_agent_info_list):
-                if agent_info.action_mask is not None:
-                    if len(agent_info.action_mask) == a_size:
-                        mask_matrix[agent_index, :] = [
-                            False if agent_info.action_mask[k] else True
-                            for k in range(a_size)
-                        ]
-            action_mask = (1 - mask_matrix).astype(bool)
-            indices = _generate_split_indices(
-                behavior_spec.action_spec.discrete_branches
-            )
-            action_mask = np.split(action_mask, indices, axis=1)
+    if behavior_spec.action_spec.discrete_size > 0 and any(
+        [agent_info.action_mask is not None]
+        for agent_info in decision_agent_info_list
+    ):
+        n_agents = len(decision_agent_info_list)
+        a_size = np.sum(behavior_spec.action_spec.discrete_branches)
+        mask_matrix = np.ones((n_agents, a_size), dtype=bool)
+        for agent_index, agent_info in enumerate(decision_agent_info_list):
+            if (
+                agent_info.action_mask is not None
+                and len(agent_info.action_mask) == a_size
+            ):
+                mask_matrix[agent_index, :] = [
+                    not agent_info.action_mask[k] for k in range(a_size)
+                ]
+        action_mask = (1 - mask_matrix).astype(bool)
+        indices = _generate_split_indices(
+            behavior_spec.action_spec.discrete_branches
+        )
+        action_mask = np.split(action_mask, indices, axis=1)
     return (
         DecisionSteps(
             decision_obs_list,

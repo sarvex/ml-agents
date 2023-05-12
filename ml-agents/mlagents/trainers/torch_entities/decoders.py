@@ -16,7 +16,7 @@ class ValueHeads(nn.Module):
         self.value_heads = nn.ModuleDict(_value_heads)
 
     def forward(self, hidden: torch.Tensor) -> Dict[str, torch.Tensor]:
-        value_outputs = {}
-        for stream_name, head in self.value_heads.items():
-            value_outputs[stream_name] = head(hidden).squeeze(-1)
-        return value_outputs
+        return {
+            stream_name: head(hidden).squeeze(-1)
+            for stream_name, head in self.value_heads.items()
+        }
